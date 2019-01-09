@@ -174,7 +174,7 @@ class TestTsBuilder(TestCase):
         my_builder.add_pattern_points(1000033, 1000043, 1, step_pattern, translate_value=0.0, scale_value=1.0)
         my_builder.add_pattern_points(1000005, 1000010, 1, step_pattern, translate_value=10.0)
         my_builder.add_pattern_points(1000013, 1000018, 1, step_pattern, translate_value=0.0, scale_value=5.0)
-        ts = my_builder.get_ts()
+        ts = my_builder.ts_read()
 
         self.assertEqual(len(ts), 51)
 

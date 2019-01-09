@@ -16,16 +16,16 @@ limitations under the License.
 """
 # Simplify the import patterns for user
 # Instead of importing :
-#   from ikats.client.TemporalDataMgr import TemporalDataMgr
+#   from ikats.session.TemporalDataMgr import TemporalDataMgr
 # User will do:
-#   from ikats.client import TemporalDataMgr
+#   from ikats.session import TemporalDataMgr
 
 
 from pkgutil import extend_path
 
 from ikats.client.utils import build_json_files, TEMPLATES, close_files
-from ikats.client.rest_client import RestClient
-from ikats.client.non_temporal_data_mgr import NonTemporalDataMgr
-from ikats.client.temporal_data_mgr import TemporalDataMgr
+from ikats.client.generic_client import GenericClient
+from ikats.client.ntdm_client import NTDMClient
+from ikats.client.tdm_client import TDMClient
 
 __path__ = extend_path(__path__, __name__)

@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from ikats import Timeseries
-from ikats.dataset_ import Dataset
+from ikats import IkatsAPI
 
 
 class TestDataset(TestCase):
@@ -9,8 +8,10 @@ class TestDataset(TestCase):
         """
         Creation of a Dataset instance
         """
+        api = IkatsAPI()
+
         # Empty
-        ds = Dataset()
+        ds = api.dataset()
         self.assertEqual(None, ds.name)
         self.assertEqual("", ds.description)
         self.assertEqual(0, len(ds))
@@ -25,21 +26,25 @@ class TestDataset(TestCase):
         self.assertEqual(description, ds.description)
 
     def test_add(self):
-        ts_list1 = [Timeseries(tsuid=str(x)) for x in range(10)]
-        ts_list2 = [Timeseries(tsuid=str(x)) for x in range(11, 20)]
+        api = IkatsAPI()
+        ts_list1 = [api.timeseries(tsuid=str(x)) for x in range(10)]
+        ts_list2 = [api.timeseries(tsuid=str(x)) for x in range(11, 20)]
 
         # Direct add
-        ds1 = Dataset(ts=ts_list1)
+        ds1 = api.dataset(ts=ts_list1)
 
-        # Add using method
-        ds2 = Dataset()
+        # Add list of TS
+        ds2 = api.dataset()
         ds2.add_ts(ts_list2)
 
         # Combine
         ds3 = ds1 + ds2
         self.assertEqual(len(ts_list1) + len(ts_list2), len(ds3))
         self.assertEqual(len(ds3.ts), len(ds3))
+        ts_list3 = ts_list1 + ts_list2
+        self.assertEqual(ts_list3, ds3.ts)
 
-        # Combine
-        ds3.ts.append("42")
+        # add single TS
+        ds3.add_ts("42")
         self.assertEqual(len(ts_list1) + len(ts_list2) + 1, len(ds3))
+        self.assertEqual("42", ds3.ts[-1].tsuid)

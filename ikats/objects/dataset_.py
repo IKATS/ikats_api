@@ -1,18 +1,18 @@
 #!/bin/python3
-from ikats.client import TemporalDataMgr
-from ikats.exception import IkatsNotFoundError, IkatsException, IkatsConflictError
-from ikats.timeseries_ import Timeseries
-from ikats.utils import check_type
+from ikats.objects.generic_ import IkatsObject
+from ikats.objects.timeseries_ import Timeseries
+from ikats.lib import check_type, check_is_valid_ds_name
 
 
-class Dataset:
+class Dataset(IkatsObject):
     """
     Dataset class composed of information related to a single Dataset
     """
 
-    def __init__(self, name=None, description=None, ts=None):
+    def __init__(self, api, name=None, description=None, ts=None):
         """
         Initialization
+
         :param name: Name of the Dataset
         :param description: Description of the Dataset
         :param ts: List of Timeseries objects
@@ -23,9 +23,11 @@ class Dataset:
         """
 
         # Internal variables initialization
+        super().__init__(api)
         self.__name = None
         self.__description = None
         self.__ts = []
+        self.__flag_ts_loaded = False
 
         # Initialization with provided parameters
         self.name = name
@@ -42,7 +44,11 @@ class Dataset:
     @name.setter
     def name(self, value):
         check_type(value=value, allowed_types=[str, None], var_name="name", raise_exception=True)
-        self.__name = value
+        if value is not None:
+            check_is_valid_ds_name(value=value, raise_exception=True)
+            if self.__name != value:
+                self.__flag_ts_loaded = False
+                self.__name = value
 
     @property
     def description(self):
@@ -63,6 +69,11 @@ class Dataset:
         """
         List of Timeseries
         """
+        # Lazy loading
+        if not self.__flag_ts_loaded:
+            if self.name is not None:
+                self.__ts = self.api.ds.read(ds=self.name)
+            self.__flag_ts_loaded = True
         return self.__ts
 
     @ts.setter
@@ -71,8 +82,8 @@ class Dataset:
         if type(value) == list:
             for ts in value:
                 if type(ts) not in [str, Timeseries]:
-                    raise TypeError("Timeseries type shall be a str or Timeseries")
-            self.__ts = [x if type(x) == Timeseries else Timeseries(tsuid=x) for x in value]
+                    raise TypeError("Timeseries shall be a TSUID or Timeseries object")
+            self.__ts = [x if type(x) == Timeseries else Timeseries(tsuid=x, api=self.api) for x in value]
 
     def __str__(self):
         return self.name
@@ -84,7 +95,7 @@ class Dataset:
         """
         :return: the number of Timeseries composing the dataset
         """
-        return len(self.ts)
+        return len(self.__ts)
 
     def __add__(self, other):
         """
@@ -97,7 +108,12 @@ class Dataset:
         :rtype: Dataset
         """
 
-        return Dataset(name="%s-%s".format(self.name, other.name),
+        # Builds the name of the resulting Dataset
+        new_name = None
+        if self.name is not None and other.name is not None:
+            new_name = "{}-{}".format(self.name, other.name)
+
+        return Dataset(api=self.api, name=new_name,
                        description=self.description,
                        ts=self.ts + other.ts)
 
@@ -108,7 +124,7 @@ class Dataset:
         """
         if type(ts) == str:
             # Assuming this is a TSUID as a string
-            ts_to_add = [Timeseries(tsuid=ts)]
+            ts_to_add = [Timeseries(tsuid=ts, api=self.api)]
         elif type(ts) == Timeseries:
             ts_to_add = [ts]
         elif type(ts) == list:
@@ -116,4 +132,4 @@ class Dataset:
         else:
             raise TypeError("Unknown type for Timeseries to add")
         self.ts = self.ts.extend(
-            [x if type(x) == Timeseries else Timeseries(tsuid=x) for x in ts_to_add])
+            [x if type(x) == Timeseries else Timeseries(tsuid=x, api=self.api) for x in ts_to_add])

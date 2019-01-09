@@ -25,7 +25,7 @@ TEMPLATES = {
 
     # TSDB
     'direct_extract_by_tsuid': {
-        'pattern': '/api/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
+        'pattern': '/session/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
     },
 
     # NON TEMPORAL DATA MANAGER

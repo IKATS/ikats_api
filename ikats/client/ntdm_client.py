@@ -16,17 +16,17 @@ limitations under the License.
 """
 import os
 
-from ikats.client import RestClient
+from ikats.client import GenericClient
 
 
-class NonTemporalDataMgr(RestClient):
+class NTDMClient(GenericClient):
     """
     Class managing all non temporal data transactions.
     Used to store/retrieve algorithms results that are not timeseries
     """
 
     def __init__(self, *args, **kwargs):
-        super(NonTemporalDataMgr, self).__init__(*args, **kwargs)
+        super(NTDMClient, self).__init__(*args, **kwargs)
 
     def add_data(self, data, process_id, data_type=None, name=None):
         """
@@ -103,7 +103,7 @@ class NonTemporalDataMgr(RestClient):
         result = {'status_code': False}
 
         response = _send(
-            verb=RestClient.VERB.POST,
+            verb=GenericClient.VERB.POST,
             template=template,
             data=post_data,
             json_data=json_data,
@@ -135,7 +135,7 @@ class NonTemporalDataMgr(RestClient):
         }
 
         response = _send(
-            verb=RestClient.VERB.GET,
+            verb=GenericClient.VERB.GET,
             template='download_process_data',
             uri_params=uri_params)
         return response
@@ -169,7 +169,7 @@ class NonTemporalDataMgr(RestClient):
         }
 
         response = _send(
-            verb=RestClient.VERB.DELETE,
+            verb=GenericClient.VERB.DELETE,
             template='remove_process_data',
             uri_params=uri_params)
 
@@ -206,7 +206,7 @@ class NonTemporalDataMgr(RestClient):
         }
 
         response = _send(
-            verb=RestClient.VERB.GET,
+            verb=GenericClient.VERB.GET,
             template='get_process_data',
             uri_params=uri_params)
 

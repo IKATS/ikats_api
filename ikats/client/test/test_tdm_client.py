@@ -25,8 +25,8 @@ import httpretty
 import mock
 import numpy as np
 
-from ikats.client import TemporalDataMgr
-from ikats.client.temporal_data_mgr import DTYPE
+from ikats.client import TDMClient
+from ikats.client.tdm_client import DTYPE
 
 # Flag to set to True to use the real servers (setting it to False will use a fake local server)
 USE_REAL_SERVER = False
@@ -34,17 +34,17 @@ USE_REAL_SERVER = False
 
 # Address of the real server to use for tests
 TEST_HOST = ""
-TEST_PORT = int(CF.get('cluster', 'client.port'))
+TEST_PORT = int(CF.get('cluster', 'session.port'))
 
 TEST_OTSDB_HOST = CF.get('cluster', 'opentsdb.read.ip')
 TEST_OTSDB_PORT = int(CF.get('cluster', 'opentsdb.read.port'))
 ROOT_URL = 'http://%s:%s/TemporalDataManagerWebApp/webapi' % (TEST_HOST, TEST_PORT)
-DIRECT_ROOT_URL = 'http://%s:%s/api' % (TEST_OTSDB_HOST, TEST_OTSDB_PORT)
+DIRECT_ROOT_URL = 'http://%s:%s/session' % (TEST_OTSDB_HOST, TEST_OTSDB_PORT)
 
 # Disable real connection depending on the usage of real or fake server
 httpretty.HTTPretty.allow_net_connect = USE_REAL_SERVER
 
-LOGGER = logging.getLogger('ikats.core.resource.client.rest_client')
+LOGGER = logging.getLogger('ikats.core.resource.session.rest_client')
 
 # Defines the log level to DEBUG
 LOGGER.setLevel(logging.DEBUG)
@@ -136,7 +136,7 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         # Implicit data type
         tdm.import_fid(
@@ -158,7 +158,7 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         # Implicit data type
         tdm.delete_fid(tsuid='test_TSUID')
@@ -183,7 +183,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         # Implicit data type
         fid = tdm.get_fid(tsuid='test_TSUID')
@@ -235,17 +235,17 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         # Implicit data type
-        result = tdm.import_meta_data(
+        result = tdm.metadata_create(
             tsuid='TSUID',
             name='test_meta_data',
             value='value_of_meta_data')
         self.assertTrue(result)
 
         # Explicitly specify the data type string
-        result = tdm.import_meta_data(
+        result = tdm.metadata_create(
             tsuid='TSUID',
             name='test_meta_data',
             value='value_of_meta_data',
@@ -253,7 +253,7 @@ class TestTemporalDataMgr(TestCase):
         self.assertTrue(result)
 
         # Explicitly specify the data type number
-        result = tdm.import_meta_data(
+        result = tdm.metadata_create(
             tsuid='TSUID',
             name='test_md_number',
             value='3',
@@ -261,7 +261,7 @@ class TestTemporalDataMgr(TestCase):
         self.assertTrue(result)
 
         # Explicitly specify the data type date
-        result = tdm.import_meta_data(
+        result = tdm.metadata_create(
             tsuid='TSUID',
             name='test_md_date',
             value='1234567890123',
@@ -269,7 +269,7 @@ class TestTemporalDataMgr(TestCase):
         self.assertTrue(result)
 
         # Explicitly specify the data type complex
-        result = tdm.import_meta_data(
+        result = tdm.metadata_create(
             tsuid='TSUID',
             name='test_md_complex',
             value='{key:value}',
@@ -290,9 +290,9 @@ class TestTemporalDataMgr(TestCase):
             status=204
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        result = tdm.import_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
+        result = tdm.metadata_create(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
         self.assertFalse(result)
 
     def test_import_md_wrong_data_type(self):
@@ -300,13 +300,13 @@ class TestTemporalDataMgr(TestCase):
         Tests the import of meta data with a wrong data type
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         with self.assertRaises(TypeError):
-            tdm.import_meta_data(tsuid='TSUID',
-                                 name='test_meta_data',
-                                 value='value_of_meta_data',
-                                 data_type="unknown")
+            tdm.metadata_create(tsuid='TSUID',
+                                name='test_meta_data',
+                                value='value_of_meta_data',
+                                data_type="unknown")
 
     @fake_server
     def test_import_md_not_exist(self):
@@ -322,9 +322,9 @@ class TestTemporalDataMgr(TestCase):
             status=404
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.import_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
+        results = tdm.metadata_create(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
         self.assertFalse(results)
 
     @fake_server
@@ -349,10 +349,10 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.import_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data',
-                                       force_update=True)
+        results = tdm.metadata_create(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data',
+                                      force_update=True)
         self.assertFalse(results)
 
     @fake_server
@@ -369,9 +369,9 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.update_meta_data(
+        results = tdm.metadata_update(
             tsuid='TSUID',
             name='test_meta_data',
             value='value_of_meta_data')
@@ -392,9 +392,9 @@ class TestTemporalDataMgr(TestCase):
             status=204
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.update_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
+        results = tdm.metadata_update(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
         self.assertFalse(results)
 
     @fake_server
@@ -411,9 +411,9 @@ class TestTemporalDataMgr(TestCase):
             status=404
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.update_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
+        results = tdm.metadata_update(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data')
         self.assertFalse(results)
 
     @fake_server
@@ -437,10 +437,10 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.update_meta_data(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data',
-                                       force_create=True)
+        results = tdm.metadata_update(tsuid='TSUID', name='test_meta_data', value='value_of_meta_data',
+                                      force_create=True)
         self.assertTrue(results)
 
     @fake_server
@@ -461,8 +461,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_typed_meta_data('TS1')
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.metadata_get_typed('TS1')
         self.assertDictEqual(results, {'TS1': {
             'MD1': {'value': 'my_string', 'type': 'string'},
             'MD2': {'value': '42', 'type': 'number'},
@@ -487,8 +487,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_meta_data('MAM3')
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.metadata_get('MAM3')
         self.assertDictEqual(results, {'MAM3': {'cycle': 'takeoff', 'flight': 'AF2042', 'units': 'meters'}})
 
     @fake_server
@@ -509,9 +509,9 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.get_meta_data(['MAM3', 'MAM4'])
+        results = tdm.metadata_get(['MAM3', 'MAM4'])
 
         self.assertDictEqual(results, {
             'MAM3': {
@@ -540,8 +540,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_meta_data('unknown_TS')
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.metadata_get('unknown_TS')
 
         self.assertDictEqual(results, {'unknown_TS': {}})
 
@@ -562,8 +562,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_meta_data(['MAM3', 'unknown'])
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.metadata_get(['MAM3', 'unknown'])
 
         self.assertDictEqual(results, {
             'MAM3': {
@@ -597,7 +597,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         data = np.array([
             [np.float64(1450772111000), 1.0],
             [np.float64(1450772112000), 2.0],
@@ -637,7 +637,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         data = np.array([
             [np.float64(1450772111000), 1.0],
             [np.float64(1450772112000), 2.0],
@@ -686,7 +686,7 @@ class TestTemporalDataMgr(TestCase):
             opened_file.write('2015-01-01T00:00:05.0;8\n')
             opened_file.write('2015-01-01T00:00:06.0;13\n')
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.import_ts_data(metric="my_metric_name",
                                      fid="functional_identifier",
@@ -728,7 +728,7 @@ class TestTemporalDataMgr(TestCase):
             opened_file.write('2015-01-01T00:00:05.0;8\n')
             opened_file.write('2015-01-01T00:00:06.0;13\n')
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         results = tdm.import_ts_data(metric="my_metric_name",
                                      fid="functional_identifier",
                                      data="/tmp/test2.csv",
@@ -757,7 +757,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_metric("WS2", sd=1325376000000, ed=1342429680000, ds='avg')
 
@@ -782,7 +782,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_metric("WS2", sd=1325376000000, ed=1448374667689, dp='7716s', ds='avg',
                                        tags={'aircraftIdentifier': 'A320001'})
@@ -808,7 +808,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         # No 'ed'
         results = tdm.get_ts_by_metric("WS2", sd=1325376000000, dp='7716s', ds='avg')
@@ -848,7 +848,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_metric("WS2", sd=1325376000000, ed=1342236780000, dp='7716s', ds='avg', di=True)
 
@@ -872,7 +872,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_metric("WS2", sd=1, ed=2)
 
@@ -884,7 +884,7 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points when bad host value is provided
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         # Robustness cases
         with self.assertRaises(ValueError):
             tdm.host = ''
@@ -893,7 +893,7 @@ class TestTemporalDataMgr(TestCase):
         """
         Tests robustness of the extraction of metric data points when bad host type is provided
         """
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(TypeError):
             tdm.host = ()
 
@@ -902,7 +902,7 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points when port value is out of range (min)
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(ValueError):
             tdm.port = -1
 
@@ -911,7 +911,7 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points when port value is out of range (max)
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(ValueError):
             tdm.port = 65536
 
@@ -920,7 +920,7 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points with bad port type (float)
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(TypeError):
             tdm.port = 2.3
 
@@ -929,7 +929,7 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points with bad port type (str)
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(TypeError):
             tdm.port = '123'
 
@@ -938,13 +938,13 @@ class TestTemporalDataMgr(TestCase):
         Tests robustness of the extraction of metric data points with bad start date type
         """
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         with self.assertRaises(TypeError):
             # noinspection PyTypeChecker
             tdm.get_ts_by_metric("WS2", sd='not valid sd', ed=1448374667689, dp='7716s', ds='avg')
 
     @fake_server
-    @mock.patch('ikats.core.resource.client.TemporalDataMgr.import_meta_data', import_md_mock)
+    @mock.patch('ikats.core.resource.session.TemporalDataMgr.import_meta_data', import_md_mock)
     def test_get_ts(self):
         """
         Tests the extraction of metric data points without knowing the start date and end date (but meta data contain
@@ -990,9 +990,9 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.get_ts("00001600000300077D0000040003F1")
+        results = tdm.ts_read("00001600000300077D0000040003F1")
 
         # The previous request shall return points
         self.assertGreater(len(results), 0)
@@ -1001,8 +1001,8 @@ class TestTemporalDataMgr(TestCase):
         self.assertEqual(META_DATA_LIST, {})
 
     @fake_server
-    @mock.patch('ikats.core.resource.client.TemporalDataMgr.get_meta_data', get_md_mock)
-    @mock.patch('ikats.core.resource.client.TemporalDataMgr.import_meta_data', import_md_mock)
+    @mock.patch('ikats.core.resource.session.TemporalDataMgr.get_meta_data', get_md_mock)
+    @mock.patch('ikats.core.resource.session.TemporalDataMgr.import_meta_data', import_md_mock)
     def test_get_ts_without_range(self):
         """
         Tests the extraction of metric data points without knowing the start date and end date (and meta data doesn't
@@ -1038,15 +1038,15 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.get_ts("00001600000300077D0000040003F1")
+        results = tdm.ts_read("00001600000300077D0000040003F1")
 
         # The previous request shall return points
         self.assertGreater(len(results), 0)
 
     @fake_server
-    @mock.patch('ikats.core.resource.client.TemporalDataMgr.import_meta_data', import_md_mock)
+    @mock.patch('ikats.core.resource.session.TemporalDataMgr.import_meta_data', import_md_mock)
     def test_get_multi_ts_without_range(self):
         """
         Tests the extraction of metric data points without knowing the start date and end date (and meta data doesn't
@@ -1082,9 +1082,9 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        results = tdm.get_ts(["00001600000300077D0000040003F1", "00001600000300077D0000040003F2"])
+        results = tdm.ts_read(["00001600000300077D0000040003F1", "00001600000300077D0000040003F2"])
 
         # The previous request shall return points
         self.assertGreater(len(results), 0)
@@ -1115,7 +1115,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_tsuid("00001600000300077D0000040003F1", sd=1343720805, ed=1343729781)
 
@@ -1137,7 +1137,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_by_tsuid("00001600000300077D0000040003F1", sd=1, ed=2)
 
@@ -1158,7 +1158,7 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.dataset_create('id_of_data_set', 'description of my data set', ['TSUID1', 'TSUID2', 'TSUID3'])
 
@@ -1183,7 +1183,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_info("WS1")
 
@@ -1204,7 +1204,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         results = tdm.get_ts_info("unknownTS")
 
@@ -1227,7 +1227,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         dataset = tdm.get_data_set('id_of_data_set')
         self.assertEqual(dataset['ts_list'], ['TSUID1', 'TSUID2', 'TSUID3'])
         self.assertEqual(dataset['description'], 'description of my data set')
@@ -1246,7 +1246,7 @@ class TestTemporalDataMgr(TestCase):
             status=404
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         dataset = tdm.get_data_set('unknown_data_set')
 
         self.assertEqual(dataset['ts_list'], [])
@@ -1266,7 +1266,7 @@ class TestTemporalDataMgr(TestCase):
             status=204
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
 
         tdm.remove_ts('tsuid')
 
@@ -1284,7 +1284,7 @@ class TestTemporalDataMgr(TestCase):
             status=200
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         status = tdm.dataset_delete('id_of_data_set')
         self.assertTrue(status)
 
@@ -1303,7 +1303,7 @@ class TestTemporalDataMgr(TestCase):
             # Even if the data_set is unknown, the deletion operation is a success
             status=200
         )
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         status = tdm.dataset_delete('unknown data set')
 
         self.assertTrue(status)
@@ -1324,8 +1324,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='application/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_ts_from_meta_data()
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.get_ts_from_metadata()
 
         self.assertGreater(len(results), 0)
 
@@ -1345,8 +1345,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_ts_from_meta_data({'cycle': ['takeoff', 'landing']})
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.get_ts_from_metadata({'cycle': ['takeoff', 'landing']})
 
         self.assertGreater(len(results), 0)
 
@@ -1366,8 +1366,8 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-        results = tdm.get_ts_from_meta_data({'unknown_meta': '42'})
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
+        results = tdm.get_ts_from_metadata({'unknown_meta': '42'})
 
         self.assertEqual(len(results), 0)
 
@@ -1392,7 +1392,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         results = tdm.get_ts_list()
 
         self.assertEqual(len(results), 7)
@@ -1412,37 +1412,10 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         results = tdm.get_ts_list()
 
         self.assertEqual(len(results), 0)
-
-    @fake_server
-    def test_get_ts_meta(self):
-        """
-        Tests the extraction of tsuid metadata with TSUID information as key
-        """
-
-        # Fake answer definition
-        httpretty.register_uri(
-            httpretty.GET,
-            '%s/ts/tsuid/%s' % (ROOT_URL, '00001600000300077D0000040003F1'),
-            body="""
-                {"tsuid":"00001600000300077D0000040003F1",
-                "funcId":"A320001_90999_WS6",
-                "metric":"WS6",
-                "tags":{"flightIdentifier":"90999","aircraftIdentifier":"A320001"}}
-            """,
-            status=200,
-            content_type='text/json'
-        )
-
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
-
-        results = tdm.get_ts_meta("00001600000300077D0000040003F1")
-
-        # The previous request shall return points
-        self.assertGreater(len(results), 0)
 
     @fake_server
     def test_get_dataset_list(self):
@@ -1461,7 +1434,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         results = tdm.dataset_list()
 
         self.assertEqual(len(results), 3)
@@ -1481,7 +1454,7 @@ class TestTemporalDataMgr(TestCase):
             content_type='text/json'
         )
 
-        tdm = TemporalDataMgr(TEST_HOST, TEST_PORT)
+        tdm = TDMClient(TEST_HOST, TEST_PORT)
         results = tdm.dataset_list()
 
         self.assertEqual(len(results), 0)

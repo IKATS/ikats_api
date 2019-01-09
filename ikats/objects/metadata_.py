@@ -1,12 +1,22 @@
 #!/bin/python3
-from .utils import check_type
+
+from ikats.objects.generic_ import IkatsObject
+from ikats.lib import check_type
 
 
-class Metadata:
-    def __init__(self, tsuid=None, session=None):
+class Metadata(IkatsObject):
+    """
+    Collection of Metadata information
+    """
+    def __init__(self, api, tsuid=None, kv_pairs=None):
+        super().__init__(api)
         self.__tsuid = tsuid
+        # Data are stored using the following format:
+        # self.__data[metadata_name] = {"value": x, "dtype": y}
         self.__data = {}
-        self.__session = session
+
+        # Parse data kv_pairs
+        pass
 
     @property
     def tsuid(self):

@@ -1,33 +1,44 @@
 #!/bin/python3
-from .session_ import IkatsSession
-from .metadata_ import Metadata
-from .utils import check_type
+import copy
+
+from ikats.objects.generic_ import IkatsObject
+from ikats.objects.metadata_ import Metadata
+from ikats.lib import check_type, check_is_fid_valid
 
 
-class Timeseries:
-    def __init__(self, tsuid=None, fid=None, data=None, df=None, spark_context=None):
+class Timeseries(IkatsObject):
+    def __init__(self, api, tsuid=None, fid=None, data=None):
+        super().__init__(api)
         self.__md = {}
+        self.__fid = None
+        self.__data = []
+        self.__flag_data_read = False
+
         self.tsuid = tsuid
         self.fid = fid
-        self.spark_context = spark_context
-        self.data = data or df
-        if data:
-            self.dtype = "python"
-        elif df:
-            self.dtype = "dataframe"
+        self.data = data
         if tsuid is not None:
-            self.md = Metadata(tsuid=tsuid)
+            self.md = Metadata(tsuid=tsuid, api=self.api)
 
     def __len__(self):
-        if self.dtype == "dataframe":
-            return self.data.count()
-        elif self.dtype == "python":
-            return len(self.data)
+        return len(self.data)
+
+    @property
+    def data(self):
+        if not self.__flag_data_read:
+            self.api.ts.read(ts=self)
+            self.__flag_data_read = True
+        return self.__data
+
+    @data.setter
+    def data(self, value):
+        if check_type(value, [list], "data", raise_exception=False):
+            self.__data = value
 
     @property
     def metadata(self):
         if self.__md is None:
-            self.__md = Metadata(tsuid=self.tsuid)
+            self.__md = Metadata(tsuid=self.tsuid, api=self.api)
         return self.__md
 
     @metadata.setter
@@ -61,8 +72,9 @@ class Timeseries:
         """
         Setter for fid
         """
-        check_type(value=value, allowed_types=[str, None], var_name="fid", raise_exception=True)
-        self.__fid = value
+        if value is not None:
+            check_is_fid_valid(fid=value, raise_exception=True)
+            self.__fid = value
 
     def __str__(self):
         return self.tsuid
@@ -83,3 +95,12 @@ class Timeseries:
 
     def get_as_pd_array(self):
         pass
+
+    def __add__(self, other):
+        ts = copy.deepcopy(self)
+        ts.data += other.data
+        if ts.tsuid is None:
+            ts.tsuid = other.tsuid
+        if ts.fid is None:
+            ts.fid = other.fid
+        return ts

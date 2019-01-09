@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import requests
 
-from ..session_ import IkatsSession
+from ikats import IkatsSession
 
 
 class TestSession(TestCase):
@@ -12,10 +12,10 @@ class TestSession(TestCase):
         self.assertEqual("http://localhost", s.host)
         self.assertEqual(80, s.port)
 
-        self.assertEqual("%s:%s/pybase/ikats/algo/catalogue/" % (s.host, s.port), s.catalog_url)
-        self.assertEqual("%s:%s/pybase/ikats/algo/execute/" % (s.host, s.port), s.engine_url)
-        self.assertEqual("%s:%s/datamodel-api/TemporalDataManagerWebApp/webapi/" % (s.host, s.port), s.tdm_url)
-        self.assertEqual("%s:%s/opentsdb/" % (s.host, s.port), s.tsdb_url)
+        self.assertEqual("%s:%s/pybase/ikats/algo/catalogue" % (s.host, s.port), s.catalog_url)
+        self.assertEqual("%s:%s/pybase/ikats/algo/execute" % (s.host, s.port), s.engine_url)
+        self.assertEqual("%s:%s/datamodel-api/TemporalDataManagerWebApp/webapi" % (s.host, s.port), s.tdm_url)
+        self.assertEqual("%s:%s/opentsdb" % (s.host, s.port), s.tsdb_url)
         self.assertEqual(requests.Session, type(s.rs))
 
         # Nominal session
@@ -55,13 +55,3 @@ class TestSession(TestCase):
         self.assertTrue(s.test_connection())
         s = IkatsSession(host="http://unknownhost.com")
         self.assertFalse(s.test_connection())
-
-    def test_instances(self):
-        self.assertEqual(0, len(IkatsSession.instances))
-        s1 = IkatsSession()
-        self.assertEqual(1, len(IkatsSession.instances))
-        s2 = IkatsSession()
-        self.assertEqual(2, len(IkatsSession.instances))
-        del s1
-        self.assertEqual(2, len(IkatsSession.instances))
-

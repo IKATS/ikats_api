@@ -4,7 +4,7 @@ import re
 
 import requests
 
-from ikats.utils import check_type
+from ikats.lib import check_type
 
 
 class IkatsSession:
@@ -13,8 +13,6 @@ class IkatsSession:
     It provides a way for other IKATS class to know where the data are
     The IKATS entry point shall be set to the main GUI URL and port.
     """
-
-    instances = []
 
     def __init__(self, host="http://localhost", port="80", sc=None, name="IKATS_SESSION"):
         """
@@ -62,8 +60,6 @@ class IkatsSession:
         self.log.addHandler(logging.StreamHandler())
         self.log.setLevel(logging.DEBUG)
 
-        self.__class__.instances.append(self)
-
     def test_connection(self):
         """
         Test the connection to the backend.
@@ -86,7 +82,7 @@ class IkatsSession:
 
     @rs.setter
     def rs(self, value):
-        check_type(value=value, allowed_types=[requests.Session], var_name="rs", raise_exception=True)
+        check_type(value=value, allowed_types=requests.Session, var_name="rs", raise_exception=True)
         self.__rs = value
 
     @property
@@ -97,9 +93,9 @@ class IkatsSession:
     def host(self, value):
         regex = re.compile(
             r'^(?:http)s?://'  # http:// or https://
-            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # Domain
             r'localhost|'  # localhost...
-            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ... or IP
             r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
         if re.match(regex, value) is not None:
@@ -116,7 +112,7 @@ class IkatsSession:
         check_type(value=value, allowed_types=[int, str, float, None], var_name="port", raise_exception=True)
 
         if int(value) <= 0 or int(value) >= 65535:
-            raise ValueError("Port must be within ]0:65535] (got %s)" % value)
+            raise ValueError("Port must be within ]0;65535] (got %s)" % value)
 
         self.__port = int(value)
 
@@ -161,19 +157,8 @@ class IkatsSession:
     def sc(self, value):
         self.__sc = value
 
-    def __del__(self):
-        self.__class__.instances.remove(self)
-
     def __repr__(self):
         return str("IKATS session to {}:{}".format(self.host, self.port))
 
     def __str__(self):
         return self.__repr__()
-
-    @classmethod
-    def get_references(cls):
-        """
-        :return: all sessions created so far
-        :rtype: list of IkatsSession
-        """
-        return cls.instances

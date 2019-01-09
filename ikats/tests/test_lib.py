@@ -1,5 +1,5 @@
 from unittest import TestCase
-from ..utils import check_type
+from ikats.lib import check_type
 
 
 class TestUtils(TestCase):

@@ -18,13 +18,13 @@ import logging
 from unittest import TestCase
 
 from ikats.core.config.ConfigReader import ConfigReader
-from ikats.client import NonTemporalDataMgr
+from ikats.client import NTDMClient
 import httpretty
 
 # Flag to set to True to use the real servers (setting it to False will use a fake local server)
 USE_REAL_SERVER = False
 
-LOGGER = logging.getLogger('ikats.core.resource.client.rest_client')
+LOGGER = logging.getLogger('ikats.core.resource.session.rest_client')
 
 # Defines the log level to DEBUG
 LOGGER.setLevel(logging.DEBUG)
@@ -40,8 +40,8 @@ LOGGER.addHandler(STREAM_HANDLER)
 
 # Address of the real server to use for tests
 CONFIG_READER = ConfigReader()
-TEST_HOST = CONFIG_READER.get('cluster', 'client.ip')
-TEST_PORT = int(CONFIG_READER.get('cluster', 'client.port'))
+TEST_HOST = CONFIG_READER.get('cluster', 'session.ip')
+TEST_PORT = int(CONFIG_READER.get('cluster', 'session.port'))
 
 # Disable real connection depending on the usage of real or fake server
 httpretty.HTTPretty.allow_net_connect = USE_REAL_SERVER
@@ -79,7 +79,7 @@ class TestNonTemporalDataMgr(TestCase):
             body='OK',
             status=200
         )
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
         # Create the test file
         with open('/tmp/test.csv', 'w') as opened_file:
             opened_file.write('timestamp;value\n')
@@ -107,7 +107,7 @@ class TestNonTemporalDataMgr(TestCase):
             body='OK',
             status=200
         )
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
 
         results = ntdm.add_data(
             str(["00006100000B005FC4", "00006200000B005FCB", "00006300000B005FCE", "00006400000B005FC6",
@@ -133,7 +133,7 @@ class TestNonTemporalDataMgr(TestCase):
             status=200
         )
 
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
 
         data_to_send = "Any opaque data"
 
@@ -155,7 +155,7 @@ class TestNonTemporalDataMgr(TestCase):
             'http://%s:%s/TemporalDataManagerWebApp/webapi/processdata/id/download/1' % (TEST_HOST, TEST_PORT),
             status=200
         )
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
         ntdm.download_data("1")
 
     @staticmethod
@@ -164,7 +164,7 @@ class TestNonTemporalDataMgr(TestCase):
         """
         Not implemented
         """
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
         # Fake answer definition
         httpretty.register_uri(
             httpretty.DELETE,
@@ -181,7 +181,7 @@ class TestNonTemporalDataMgr(TestCase):
         """
         Requests for the meta data associated to a TS
         """
-        ntdm = NonTemporalDataMgr()
+        ntdm = NTDMClient()
 
         # Fake answer definition
         httpretty.register_uri(

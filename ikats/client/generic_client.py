@@ -17,9 +17,10 @@ limitations under the License.
 
 from enum import Enum
 
+from ikats.exception import IkatsInputError, IkatsNotFoundError, IkatsClientError, IkatsServerError
 from ikats.session_ import IkatsSession
 from ikats.client import build_json_files, close_files
-from ikats.utils import check_type
+from ikats.lib import check_type
 
 
 class RestClientResponse(object):
@@ -53,7 +54,7 @@ class RestClientResponse(object):
         # (see example with self.json)
         self.status_code = result.status_code
         self.headers = result.headers
-        self.content_type = self.headers.get('Content-type', None)
+        self.content_type = self.headers.get('content-type', None)
         self.url = result.url
         self.__json = None
         self.text = result.text
@@ -104,22 +105,30 @@ class RestClientResponse(object):
             raise TypeError("Failed to find appropriate content for content-type=%s", self.content_type)
 
 
-class RestClient(object):
+class GenericClient(object):
     """
     Generic class to communicate using REST API
     """
 
-    def __init__(self, ikats_session):
+    def __init__(self, session):
         self.__session = None
-        self.session = ikats_session
+        self.session = session
 
     @property
     def session(self):
+        """
+        session contains necessary information to allow clients to connect to IKATS backend
+
+        :return: the IKATS session
+        : rtype: IkatsSession
+        """
         return self.__session
 
     @session.setter
     def session(self, value):
-        check_type(value, [IkatsSession, None], "session")
+        check_type(value, IkatsSession, "session", raise_exception=True)
+        if value.rs is None:
+            raise ValueError("Requests Session not set in provided IKATS session")
         self.__session = value
 
     class VERB(Enum):
@@ -136,15 +145,15 @@ class RestClient(object):
         PUT = 2
         DELETE = 3
 
-    def _send(self, root_url,
-              verb=None,
-              template="",
-              uri_params=None,
-              q_params=None,
-              files=None,
-              data=None,
-              json_data=None,
-              headers=None):
+    def send(self, root_url,
+             verb=None,
+             template="",
+             uri_params=None,
+             q_params=None,
+             files=None,
+             data=None,
+             json_data=None,
+             headers=None):
         """
         Generic call command that should not be called directly
 
@@ -156,48 +165,37 @@ class RestClient(object):
         * decode the output
         * return the data
 
-
+        :param root_url: Root part of the URL (domain, port and session root path)
         :param template: template to use for url building
-        :type template: str
         :param uri_params:  optional, default None: parameters applied to the template
         :param verb:  optional, default None: HTTP method to call
-        :type verb: IkatsRest.VERB
         :param q_params: optional, default None: list of query parameters
-        :type q_params: dict or None
         :param files: optional, default None: files full path to attach to request
-        :type files: str or list or None
         :param data: optional, default None: data input consumed by request
             -note: when data is not None, json must be None
-        :type data: object
         :param json_data: optional, default None: json input consumed by request
             -note: when json is not None, data must be None
-        :type json_data: object
-        :return: the response as a anonymous class containing the following attributes:
-            class Result:
-                url = *url of the request performed*
-                json = *body content parsed from json*
-                text = *body content parsed as text*
-                raw = *raw response content*
-                status_code = *HTTP status_code code*
-                reason = *reason (useful in case of HTTP status_code code 4xx or 5xx)
-            This way to return results improve readability of the code.
-            Example:
-                r = self.send(...)
-                if r.status_code == 200:
-                    print(r.text)
-        :rtype: anonymous class
+        :param headers: any headers to provide in request
 
-        .. note:
-           Timeout set to following values:
-              - 120 seconds for GET and POST
-              - 120 seconds for PUT and DELETE
+        :type root_url: str
+        :type template: str
+        :type uri_params: dict
+        :type verb: IkatsRest.VERB
+        :type q_params: dict or None
+        :type files: str or list or None
+        :type data: object
+        :type json_data: object
+        :type headers: dict
+
+        :return: the response of the request
+        :rtype: RestClientResponse
 
         :raises TypeError: if VERB is incorrect
         :raises TypeError: if FORMAT is incorrect
         :raises ValueError: if a parameter of uri_param contains spaces
-                            if there are unexpected argument values
+        :raises ValueError: if there are unexpected argument values
         """
-        if not isinstance(verb, RestClient.VERB):
+        if not isinstance(verb, GenericClient.VERB):
             raise TypeError("Verb type is %s whereas IkatsRest.VERB is expected", type(verb))
 
         if (data is not None) and (json_data is not None):
@@ -213,7 +211,7 @@ class RestClient(object):
 
         # Dispatch method
         try:
-            if verb == RestClient.VERB.POST:
+            if verb == GenericClient.VERB.POST:
                 result = self.session.rs.post(url,
                                               data=data,
                                               json=json_data,
@@ -221,17 +219,17 @@ class RestClient(object):
                                               params=q_params,
                                               timeout=300,
                                               headers=headers)
-            elif verb == RestClient.VERB.GET:
+            elif verb == GenericClient.VERB.GET:
                 result = self.session.rs.get(url,
                                              params=q_params,
                                              timeout=300,
                                              headers=headers)
-            elif verb == RestClient.VERB.PUT:
+            elif verb == GenericClient.VERB.PUT:
                 result = self.session.rs.put(url,
                                              params=q_params,
                                              timeout=300,
                                              headers=headers)
-            elif verb == RestClient.VERB.DELETE:
+            elif verb == GenericClient.VERB.DELETE:
                 result = self.session.rs.delete(url,
                                                 params=q_params,
                                                 timeout=300,
@@ -250,3 +248,65 @@ class RestClient(object):
             close_files(json_file)
 
         return RestClientResponse(result)
+
+
+def check_http_code(response):
+    """
+    Inspect http response and throws error if needed
+
+    :param response: http response handled
+    :type response: RestClientResponse
+
+    :raises IkatsInputError: if status_code 400 (bad request)
+    :raises IkatsNotFoundError: mismatched result: http status_code 404:  not found
+    :raises IkatsClientError: unexpected client error
+    :raises IkatsServerError: unexpected server error
+    """
+
+    if str(response.status_code)[0] == '2':
+        # HTTP_CODE == 2XX
+        return
+    is_400(response, "Invalid parameters sent")
+    is_404(response, "No Results")
+    is_4xx(response, "Unexpected client error: {code}")
+    is_5xx(response, "Unexpected server error: {code}")
+
+
+def is_400(response, msg):
+    if response.status_code == 400:
+        raise IkatsInputError(msg)
+
+
+def is_404(response, msg):
+    if response.status_code == 404:
+        raise IkatsNotFoundError(msg)
+
+
+def is_4xx(response, msg):
+    """
+    Detects a 4XX HTTP error code.
+    Use "{code}" in msg to use the obtained HTTP code
+
+    :param response:
+    :param msg:
+
+    """
+    if str(response.status_code)[0] == '4':
+        if "{code}" in msg:
+            msg = msg.format(**{"code": response.status_code})
+        raise IkatsClientError(msg)
+
+
+def is_5xx(response, msg):
+    """
+    Detects a 5XX HTTP error code.
+    Use "{code}" in msg to use the obtained HTTP code
+
+    :param response:
+    :param msg:
+
+    """
+    if str(response.status_code)[0] == '5':
+        if "{code}" in msg:
+            msg = msg.format(**{"code": response.status_code})
+        raise IkatsServerError(msg)
