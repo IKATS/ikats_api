@@ -153,7 +153,8 @@ class GenericClient(object):
              files=None,
              data=None,
              json_data=None,
-             headers=None):
+             headers=None,
+             timeout=300):
         """
         Generic call command that should not be called directly
 
@@ -176,6 +177,7 @@ class GenericClient(object):
         :param json_data: optional, default None: json input consumed by request
             -note: when json is not None, data must be None
         :param headers: any headers to provide in request
+        :param timeout: override the default timeout (300) before considering request as "lost"
 
         :type root_url: str
         :type template: str
@@ -186,6 +188,7 @@ class GenericClient(object):
         :type data: object
         :type json_data: object
         :type headers: dict
+        :type timeout: int
 
         :return: the response of the request
         :rtype: RestClientResponse
@@ -195,8 +198,7 @@ class GenericClient(object):
         :raises ValueError: if a parameter of uri_param contains spaces
         :raises ValueError: if there are unexpected argument values
         """
-        if not isinstance(verb, GenericClient.VERB):
-            raise TypeError("Verb type is %s whereas IkatsRest.VERB is expected", type(verb))
+        check_type(value=verb, allowed_types=GenericClient.VERB, var_name="verb", raise_exception=True)
 
         if (data is not None) and (json_data is not None):
             raise ValueError("Integrity error: arguments data and json_data are mutually exclusive.")
@@ -217,22 +219,22 @@ class GenericClient(object):
                                               json=json_data,
                                               files=json_file,
                                               params=q_params,
-                                              timeout=300,
+                                              timeout=timeout,
                                               headers=headers)
             elif verb == GenericClient.VERB.GET:
                 result = self.session.rs.get(url,
                                              params=q_params,
-                                             timeout=300,
+                                             timeout=timeout,
                                              headers=headers)
             elif verb == GenericClient.VERB.PUT:
                 result = self.session.rs.put(url,
                                              params=q_params,
-                                             timeout=300,
+                                             timeout=timeout,
                                              headers=headers)
             elif verb == GenericClient.VERB.DELETE:
                 result = self.session.rs.delete(url,
                                                 params=q_params,
-                                                timeout=300,
+                                                timeout=timeout,
                                                 headers=headers)
             else:
                 raise RuntimeError("Verb [%s] is unknown, shall be one defined by VERB Enumerate" % verb)

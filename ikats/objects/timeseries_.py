@@ -9,23 +9,23 @@ from ikats.lib import check_type, check_is_fid_valid
 class Timeseries(IkatsObject):
     def __init__(self, api, tsuid=None, fid=None, data=None):
         super().__init__(api)
-        self.__md = {}
+        self.__md = None
+        self.__tsuid = None
         self.__fid = None
         self.__data = []
         self.__flag_data_read = False
 
+        self.metadata = Metadata(api=api, tsuid=tsuid)
         self.tsuid = tsuid
         self.fid = fid
         self.data = data
-        if tsuid is not None:
-            self.md = Metadata(tsuid=tsuid, api=self.api)
 
     def __len__(self):
         return len(self.data)
 
     @property
     def data(self):
-        if not self.__flag_data_read:
+        if not self.__flag_data_read and self.__tsuid is not None:
             self.api.ts.read(ts=self)
             self.__flag_data_read = True
         return self.__data
@@ -37,13 +37,12 @@ class Timeseries(IkatsObject):
 
     @property
     def metadata(self):
-        if self.__md is None:
-            self.__md = Metadata(tsuid=self.tsuid, api=self.api)
         return self.__md
 
     @metadata.setter
     def metadata(self, value):
-        pass
+        check_type(value=value, allowed_types=[Metadata], var_name="metadata", raise_exception=True)
+        self.__md = value
 
     @property
     def tsuid(self):
@@ -56,9 +55,14 @@ class Timeseries(IkatsObject):
     def tsuid(self, value):
         """
         Setter for tsuid
+
+        This setter shouldn't be used manually
         """
         check_type(value=value, allowed_types=[str, None], var_name="tsuid", raise_exception=True)
-        self.__tsuid = value
+        if self.__tsuid != value:
+            self.__tsuid = value
+            # Update Metadata link
+            self.metadata.tsuid = value
 
     @property
     def fid(self):
@@ -75,6 +79,9 @@ class Timeseries(IkatsObject):
         if value is not None:
             check_is_fid_valid(fid=value, raise_exception=True)
             self.__fid = value
+
+            # Try to get existing tsuid
+            self.tsuid = self.api.ts.tsuid_from_fid(fid=self.fid, raise_exception=False)
 
     def __str__(self):
         return self.tsuid
@@ -102,5 +109,5 @@ class Timeseries(IkatsObject):
         if ts.tsuid is None:
             ts.tsuid = other.tsuid
         if ts.fid is None:
-            ts.fid = other.fid
+            ts.fid = other.fid_from_tsuid
         return ts

@@ -1,18 +1,55 @@
 # noinspection PyMethodOverriding,PyAbstractClass
-from enum import Enum
 
-from ikats.client import TDMClient
+from ikats.client.tdm_client import TDMClient, DTYPE as C_TYPE
+from ikats.lib import check_type
 from ikats.manager.generic_ import IkatsGenericApiEndPoint
+from ikats.objects.metadata_ import Metadata, DTYPE as O_TYPE
 
 
-class DTYPE(Enum):
+def _to_client_type(object_type):
     """
-    Enum used for Data types of Meta data
+    Converts object DTYPE defined in Metadata object to the client DTYPE defined in TDM client
+
+    :param object_type: value to convert
+    :type object_type: O_TYPE
+
+    :return: the converted value
+    :rtype: C_TYPE
     """
-    string = "string"
-    date = "date"
-    number = "number"
-    complex = "complex"
+
+    mapping_rule = {
+        O_TYPE.STRING: C_TYPE.string,
+        O_TYPE.COMPLEX: C_TYPE.complex,
+        O_TYPE.NUMBER: C_TYPE.number,
+        O_TYPE.DATE: C_TYPE.date,
+    }
+
+    if object_type not in mapping_rule:
+        raise ValueError("Can't convert object DTYPE to client type: %s", object_type)
+    return mapping_rule[object_type]
+
+
+def _to_object_type(client_type):
+    """
+    Converts client DTYPE defined in TDM client to the object DTYPE defined in Metadata object
+
+    :param client_type: value to convert
+    :type client_type: C_TYPE
+
+    :return: the converted value
+    :rtype: O_TYPE
+    """
+
+    mapping_rule = {
+        C_TYPE.string: O_TYPE.STRING,
+        C_TYPE.complex: O_TYPE.COMPLEX,
+        C_TYPE.number: O_TYPE.NUMBER,
+        C_TYPE.date: O_TYPE.DATE,
+    }
+
+    if client_type not in mapping_rule:
+        raise ValueError("Can't convert object Type to object type: %s", client_type)
+    return mapping_rule[client_type]
 
 
 class IkatsMetadataMgr(IkatsGenericApiEndPoint):
@@ -20,21 +57,24 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
     Ikats EndPoint specific to Metadata management
     """
 
-    @classmethod
-    def create(cls, tsuid, name, value, data_type=DTYPE.string, force_update=False):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = TDMClient(session=self.api.session)
+
+    def create(self, tsuid, name, value, dtype=O_TYPE.STRING, force_update=False):
         """
         Import a meta data into TemporalDataManager
 
         :param tsuid: Functional Identifier of the TS
         :param name: Metadata name
         :param value: Value of the metadata
-        :param data_type: data type of the meta data
+        :param dtype: data type of the meta data
         :param force_update: True to create the meta if not exists (default: False)
 
         :type tsuid: str
         :type name: str
         :type value: str or number
-        :type data_type: DTYPE
+        :type dtype: O_TYPE
         :type force_update: bool
 
         :return: execution status, True if import successful, False otherwise
@@ -51,74 +91,44 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
         :raises ValueError: if *value* is empty
         """
 
-        tdm = TDMClient()
-        result = tdm.metadata_create(tsuid=tsuid, name=name, value=value, data_type=data_type,
-                                     force_update=force_update)
+        result = self.client.metadata_create(tsuid=tsuid, name=name, value=value,
+                                             data_type=_to_client_type(object_type=dtype),
+                                             force_update=force_update)
         if not result:
-            cls.LOGGER.error("Metadata '%s' couldn't be saved for TS %s", name, tsuid)
+            self.api.log.error("Metadata '%s' couldn't be saved for TS %s", name, tsuid)
         return result
 
-    def read(self, ts, name=None):
+    def fetch(self, metadata):
         """
-        returns metadata information about the ts provided
+        Fetch and return metadata information about the Metadata object provided
 
-        :param ts: Timeseries object or TSUID identifying the TS
-        :param name: (optional) Name of the metadata to read (directly)
+        The returned dict has the following format:
+        {
+          'md1':{'value':'value1', 'type': 'dtype'},
+          'md2':{'value':'value2', 'type': 'dtype'}
+        }
 
-        :param ts: Timeseries or str
-        :param name: str or None
+        :param metadata: Metadata object containing a valid tsuid
+        :type metadata: Metadata
 
-        :return: the metadata value (if name provided) or the Metadata object corresponding to the ts provided
-        :rtype: Metadata or object
-        """
-        # TODO, next step to do
-        pass
-
-    @staticmethod
-    def old_read(ts_list, with_type=False):
-        """
-        Request for metadata of a TS or a list of TS
-
-        .. note::
-           Accepted format for list of TS are:
-               * 'TS1,TS2,TS3,TS4'
-               * 'TS1'
-               * ['TS1','TS2','TS3','TS4']
-               * ['TS1']
-
-        :returns: metadata for each TS
-        :rtype: dict (key is TS identifier, value is list of metadata with its associated data type)
-            | {
-            |     'TS1': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}},
-            |     'TS2': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}}
-            | }
-        :rtype: dict (key is TS identifier, value is list of metadata without its associated data type)
-            | {
-            |     'TS1': {'param1':'value1', 'param2':'value2'},
-            |     'TS2': {'param1':'value1', 'param2':'value2'}
-            | }
-
-        :param ts_list: list of TS identifier
-        :type ts_list: str or list
-
-        :param with_type: boolean indicating the content to return
-        :type with_type: bool
-
-        :raises TypeError: if *ts_list* is neither a str nor a list
+        :return: the object containing information about each metadata matching the TSUID.
+        :rtype: dict
         """
 
-        tdm = TDMClient()
-        if with_type:
-            return tdm.metadata_get_typed(ts_list=ts_list)
-        else:
-            return tdm.metadata_get(ts_list=ts_list)
+        check_type(value=metadata, allowed_types=Metadata, raise_exception=True)
+        result = self.client.metadata_get_typed(ts_list=[metadata.tsuid])[metadata.tsuid]
 
-    @staticmethod
-    def update(tsuid, name, value, data_type=DTYPE.string, force_create=False):
+        # Converts DTYPE
+        for md in result:
+            result[md]["dtype"] = _to_object_type(C_TYPE[result[md]["type"]])
+
+        return result
+
+    def update(self, tsuid, name, value, data_type=O_TYPE.STRING, force_create=False):
         """
         Import a meta data into TemporalDataManager
 
-        :param tsuid: Functional Identifier of the TS
+        :param tsuid: TSUID of the TS
         :param name: Metadata name
         :param value: Value of the metadata
         :param data_type: data type of the meta data (used only if force_create, no type change on existing meta data)
@@ -143,5 +153,25 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
         :raises ValueError: if *value* is empty
         """
 
-        tdm = TDMClient()
-        return tdm.metadata_update(tsuid=tsuid, name=name, value=value, data_type=data_type, force_create=force_create)
+        return self.client.metadata_update(tsuid=tsuid, name=name, value=value,
+                                           data_type=_to_client_type(object_type=data_type),
+                                           force_create=force_create)
+
+    def delete(self, tsuid, name, raise_exception=True):
+        """
+        Delete a metadata associated to a TSUID
+        Returns True if everything is fine, False if an error happened
+
+        :param tsuid:
+        :param name: Name of the metadata
+        :param raise_exception: Set to True to trigger exception
+
+        :type tsuid: str
+        :type name: str
+        :type raise_exception: bool
+
+
+        :return: The action status
+        """
+        # TODO
+        pass

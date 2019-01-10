@@ -155,11 +155,11 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
             flag_update_object = True
 
         if sd is None:
-            sd = self.api.md.read(ts=ts, name="ikats_start_date")
+            sd = ts.metadata.get(name="ikats_start_date")
         check_is_valid_epoch(value=sd, raise_exception=True)
 
         if ed is None:
-            ed = int(ts.md.get("ikats_end_date"))
+            ed = ts.metadata.get(name="ikats_end_date")
         check_is_valid_epoch(value=ed, raise_exception=True)
 
         data_points = self.tsdb_client.get_ts_by_tsuid(tsuid=ts.tsuid, sd=sd, ed=ed)
@@ -248,9 +248,10 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
 
         return self.tdm_client.get_ts_from_metadata(constraint=constraint)
 
-    def fid(self, tsuid):
+    def fid_from_tsuid(self, tsuid):
         """
         Retrieve the functional ID associated to the tsuid param.
+
         :param tsuid: one tsuid value
         :type tsuid: str
 
@@ -261,8 +262,36 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         :raises ValueError: no functional ID matching the tsuid
         :raises ServerError: http answer with status : 500 <= status < 600
         """
-
+        # TODO harmonize with tsuid_from_fid (raises)
         return self.tdm_client.get_func_id_from_tsuid(tsuid=tsuid)
+
+    def tsuid_from_fid(self, fid, raise_exception=True):
+        """
+        Retrieve the functional ID associated to the tsuid param.
+
+        :param fid: the functional Identifier
+        :param raise_exception: Allow to specify if the action shall assert if not found or not
+
+        :type fid: str
+        :type raise_exception: bool
+
+        :return: retrieved TSUID value or None if not found
+        :rtype: str
+
+        :raises TypeError:  if fid is not str
+        :raises IkatsNotFoundError: no match
+        """
+
+        check_is_fid_valid(fid=fid)
+
+        # Check if fid already associated to an existing tsuid
+        try:
+            self.tdm_client.get_tsuid_from_fid(fid=fid)
+        except IkatsNotFoundError:
+            if raise_exception:
+                raise
+            else:
+                return None
 
     def nb_points(self, tsuid):
         """

@@ -20,7 +20,7 @@ from enum import Enum
 from ikats.client import GenericClient
 from ikats.exception import *
 from ikats.lib import check_type, check_is_fid_valid, check_is_valid_ds_name
-from ikats.client.generic_client import check_http_code, is_4xx, is_404
+from ikats.client.generic_client import check_http_code, is_404
 
 # List of templates used to build URL.
 #
