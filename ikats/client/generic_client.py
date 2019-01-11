@@ -275,11 +275,29 @@ def check_http_code(response):
 
 
 def is_400(response, msg):
+    """
+    Detects a 400 HTTP error code.
+
+    :param response: response of the request
+    :param msg: msg to display in case of match
+
+    :type response: RestClientResponse
+    :type msg: str
+    """
     if response.status_code == 400:
         raise IkatsInputError(msg)
 
 
 def is_404(response, msg):
+    """
+    Detects a 404 HTTP error code.
+
+    :param response: response of the request
+    :param msg: msg to display in case of match
+
+    :type response: RestClientResponse
+    :type msg: str
+    """
     if response.status_code == 404:
         raise IkatsNotFoundError(msg)
 
@@ -289,9 +307,11 @@ def is_4xx(response, msg):
     Detects a 4XX HTTP error code.
     Use "{code}" in msg to use the obtained HTTP code
 
-    :param response:
-    :param msg:
+    :param response: response of the request
+    :param msg: msg to display in case of match
 
+    :type response: RestClientResponse
+    :type msg: str
     """
     if str(response.status_code)[0] == '4':
         if "{code}" in msg:
