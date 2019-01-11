@@ -9,29 +9,29 @@ class Dataset(IkatsObject):
     Dataset class composed of information related to a single Dataset
     """
 
-    def __init__(self, api, name=None, description=None, ts=None):
+    def __init__(self, api, name=None, desc=None, ts=None):
         """
         Initialization
 
         :param name: Name of the Dataset
-        :param description: Description of the Dataset
+        :param desc: Description of the Dataset
         :param ts: List of Timeseries objects
 
         :type name: str or None
-        :type description: str or None
+        :type desc: str or None
         :type ts: list of Timeseries
         """
 
         # Internal variables initialization
         super().__init__(api)
         self.__name = None
-        self.__description = None
+        self.__desc = None
         self.__ts = []
         self.__flag_ts_loaded = False
 
         # Initialization with provided parameters
         self.name = name
-        self.description = description
+        self.desc = desc
         self.ts = ts
 
     @property
@@ -51,18 +51,18 @@ class Dataset(IkatsObject):
                 self.__name = value
 
     @property
-    def description(self):
+    def desc(self):
         """
         Description of the Dataset
         """
-        return self.__description
+        return self.__desc
 
-    @description.setter
-    def description(self, value):
+    @desc.setter
+    def desc(self, value):
         check_type(value=value, allowed_types=[str, None], var_name="description", raise_exception=True)
-        self.__description = value
+        self.__desc = value
         if value is None:
-            self.__description = ""
+            self.__desc = ""
 
     @property
     def ts(self):
@@ -72,7 +72,7 @@ class Dataset(IkatsObject):
         # Lazy loading
         if not self.__flag_ts_loaded:
             if self.name is not None:
-                self.__ts = self.api.ds.read(ds=self.name)
+                self.__ts = self.api.ds.get(name=self.name)
             self.__flag_ts_loaded = True
         return self.__ts
 
@@ -94,12 +94,15 @@ class Dataset(IkatsObject):
     def __len__(self):
         """
         :return: the number of Timeseries composing the dataset
+        :rtype: int
         """
         return len(self.__ts)
 
     def __add__(self, other):
         """
         Creates a new Dataset composed of the list of Timeseries of both Original datasets
+        The name of the resulting dataset will be empty (to be defined after the operation)
+        The description will be: "Concatenation of the datasets %s and %s"
 
         :param other: other Dataset to add
         :type other: Dataset
@@ -108,14 +111,10 @@ class Dataset(IkatsObject):
         :rtype: Dataset
         """
 
-        # Builds the name of the resulting Dataset
-        new_name = None
-        if self.name is not None and other.name is not None:
-            new_name = "{}-{}".format(self.name, other.name)
+        description = "Concatenation of the datasets {} and {}"
 
-        return Dataset(api=self.api, name=new_name,
-                       description=self.description,
-                       ts=self.ts + other.ts)
+        return self.api.ds.new(desc=description.format(self.name, other.name),
+                               ts=self.ts + other.ts)
 
     def add_ts(self, ts):
         """
@@ -126,6 +125,7 @@ class Dataset(IkatsObject):
             # Assuming this is a TSUID as a string
             ts_to_add = [Timeseries(tsuid=ts, api=self.api)]
         elif type(ts) == Timeseries:
+            # Because we use "extend", the input is converted to a list
             ts_to_add = [ts]
         elif type(ts) == list:
             ts_to_add = ts

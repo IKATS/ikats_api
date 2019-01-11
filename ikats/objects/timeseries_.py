@@ -26,7 +26,13 @@ class Timeseries(IkatsObject):
     @property
     def data(self):
         if not self.__flag_data_read and self.__tsuid is not None:
-            self.api.ts.read(ts=self)
+            try:
+                self.api.ts.load(ts=self)
+            except:
+                # For fresh created Timeseries, there is no metadata so the `load` method can't be performed
+                # since it needs the ikats_start_date and ikats_end_date to work properly
+                # An exception is raised but nothing else to do
+                pass
             self.__flag_data_read = True
         return self.__data
 
@@ -84,10 +90,15 @@ class Timeseries(IkatsObject):
             self.tsuid = self.api.ts.tsuid_from_fid(fid=self.fid, raise_exception=False)
 
     def __str__(self):
-        return self.tsuid
+        if self.__tsuid is not None:
+            return self.__tsuid
+        return "<LocalTimeseries>"
 
     def __repr__(self):
-        return "Timeseries %s (%s)" % (self.fid, self.tsuid)
+        if self.__tsuid:
+            return "Timeseries %s (%s)" % (self.fid, self.tsuid)
+        else:
+            return "<LocalTimeseries>"
 
     def get_as_list(self):
         pass
@@ -111,3 +122,26 @@ class Timeseries(IkatsObject):
         if ts.fid is None:
             ts.fid = other.fid_from_tsuid
         return ts
+
+    def save(self, generate_metadata=False):
+        """
+        Saves the Timeseries into database
+        Generates the minimum required metadata if specified (used only when creating the TS for the first time
+
+        :param generate_metadata:
+        :type generate_metadata: bool
+
+        :return:
+        """
+        self.api.ts.save(ts=self, generate_metadata=generate_metadata)
+
+    def delete(self, raise_exception=True):
+        """
+        Deletes the Timeseries from database
+
+        :param raise_exception: True to trigger the exception if they occurs
+        :type raise_exception: bool
+
+        :return: the status of the action
+        """
+        return self.api.ts.delete(ts=self.tsuid, raise_exception=raise_exception)

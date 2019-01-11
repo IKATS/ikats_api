@@ -24,17 +24,17 @@ from ikats.client import GenericClient
 from ikats.exception import IkatsNotFoundError
 
 TEMPLATES = {
-    'direct_extract_by_tsuid': '/session/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
-    'assign_metric': '/session/uid/assign?metric={metric}&tagk={tagk}&tagv={tagv}',
-    'add_points': '/session/put?details&sync&sync_timeout={timeout}',
-    'points_count': '/session/query?start=0&tsuid=sum:1y-count:{tsuid}',
-    'get_metric_tags_from_tsuid': '/session/uid/uidmeta?uid={uid}&type={item_type}'
+    'direct_extract_by_tsuid': '/api/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
+    'assign_metric': '/api/uid/assign?metric={metric}&tagk={tagk}&tagv={tagv}',
+    'add_points': '/api/put?details&sync&sync_timeout={timeout}',
+    'points_count': '/api/query?start=0&tsuid=sum:1y-count:{tsuid}',
+    'get_metric_tags_from_tsuid': '/api/uid/uidmeta?uid={uid}&type={item_type}'
 }
 
 
 class OpenTSDBClient(GenericClient):
     """
-    Wrapper for Ikats to connect to OpenTSDB session
+    Wrapper for Ikats to connect to OpenTSDB api
     """
 
     def get_nb_points_of_tsuid(self, tsuid):
@@ -208,11 +208,11 @@ class OpenTSDBClient(GenericClient):
         results = response.json
 
         # Initializing tsuid with metric uid retrieved from OpenTSDB json response
-        tsuid = self._extract_uid_from_json(item_type='metric', value=metric, json=results)
+        tsuid = self._extract_uid_from_json(item_type='metric', value=metric, data=results)
 
         # Retrieving and concatenating by pair [ tagk + tagv ] uids from OpenTSDB json response
-        tagkv_items = [self._extract_uid_from_json(item_type='tagk', value=str(k), json=results) +
-                       self._extract_uid_from_json(item_type='tagv', value=str(v), json=results)
+        tagkv_items = [self._extract_uid_from_json(item_type='tagk', value=str(k), data=results) +
+                       self._extract_uid_from_json(item_type='tagv', value=str(v), data=results)
                        for k, v in tags.items()]
 
         # Concatenating [tagk + tagv] uids to previously initialized tsuid, after having sorted them in
@@ -222,7 +222,7 @@ class OpenTSDBClient(GenericClient):
         return tsuid
 
     @classmethod
-    def _extract_uid_from_json(cls, item_type, value, json):
+    def _extract_uid_from_json(cls, item_type, value, data):
         """
         Retrieve uid corresponding to type and value parameters parsing json response from OpenTSDB
         (see http://opentsdb.net/docs/build/html/api_http/uid/assign.html Response for json format)
@@ -233,17 +233,17 @@ class OpenTSDBClient(GenericClient):
         :param value: value of corresponding type seeking
         :type value: str
 
-        :param json: json response from OpenTSDB to an uid assignment
-        :type json: dict
+        :param data: json response from OpenTSDB to an uid assignment
+        :type data: dict
 
         :return: uid stored in database
         :rtype: str
         """
-        if value in json[item_type]:
+        if value in data[item_type]:
             # new uid created
-            return json[item_type][value]
-        elif value in json[item_type + '_errors']:
-            uid = str(json[item_type + '_errors'][value]).split(':')[1].strip()
+            return data[item_type][value]
+        elif value in data[item_type + '_errors']:
+            uid = str(data[item_type + '_errors'][value]).split(':')[1].strip()
             # Test if returned an hex value
             if all(c in string.hexdigits for c in uid):
                 # uid already exist, return value

@@ -1,12 +1,10 @@
 import random
 
-from ikats.objects.timeseries_ import Timeseries
 
-
-def gen_random(sd=None, ed=None, nb_points=None, period=None):
+def gen_random_ts(sd=None, ed=None, nb_points=None, period=None):
     """
     Generates a random Timeseries composed of nb_points between sd and ed (start & end dates)
-    sd, ed and nb_points are optional.
+    end_date is excluded from the range, ie. [sd;ed[
 
 
     :param sd: start date (in ms since EPOCH)
@@ -19,8 +17,8 @@ def gen_random(sd=None, ed=None, nb_points=None, period=None):
     :type nb_points: int
     :type period: int
 
-    :return: the Timeseries object (only local, not saved)
-    :rtype: Timeseries
+    :return: the data points in a 2D array where 1st col is the timestamp in EPOCH (ms) and the 2nd is the value (float)
+    :rtype: list of points
     """
 
     # At least 3 out of 4 parameters shall be set in order to create the data
@@ -34,10 +32,10 @@ def gen_random(sd=None, ed=None, nb_points=None, period=None):
     if sd is None:
         sd = ed - (nb_points * period)
     if ed is None:
-        ed = (nb_points * period) - sd
+        ed = sd + (nb_points * period)
 
     # check consistency
-    if int((ed - sd) / period) != nb_points or not ((ed - sd) / period).is_integer():
+    if period == 0 or int((ed - sd) / period) != nb_points or not ((ed - sd) / period).is_integer():
         raise ValueError("Bad inputs, can't generate Timeseries")
 
     # generate data
@@ -47,5 +45,3 @@ def gen_random(sd=None, ed=None, nb_points=None, period=None):
         val_col.append(random.random() * 10 - 5 + val_col[-1])
     return list(zip(time_col, val_col))
 
-
-print(gen_random(sd=1000, ed=10000, period=1000, nb_points=9))

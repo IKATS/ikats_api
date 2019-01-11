@@ -64,7 +64,7 @@ class Metadata(IkatsObject):
 
         # Empty local database
         if self.__data is None:
-            self.__data = {}
+            self.__data = dict()
         # Overwrite previous ones
         self.__data.update(results)
 
@@ -79,11 +79,11 @@ class Metadata(IkatsObject):
         """
         # Empty local database
         if self.__data is None:
-            self.__data = {}
+            self.__data = dict()
 
         # Metadata is absent
         if name not in self.__data:
-            self.__data[name] = {}
+            self.__data[name] = dict()
 
         # Set value
         self.__data[name]["value"] = value
@@ -115,6 +115,7 @@ class Metadata(IkatsObject):
 
         value = self.__data[name]["value"]
 
+        # Format the value depending on type
         if self.__data[name]["dtype"] == DTYPE.STRING:
             return str(value)
         elif self.__data[name]["dtype"] == DTYPE.NUMBER:
@@ -167,11 +168,11 @@ class Metadata(IkatsObject):
 
         # Empty local database
         if self.__data is None:
-            self.__data = {}
+            self.__data = dict()
 
         # Metadata is absent
         if name not in self.__data:
-            self.__data[name] = {}
+            self.__data[name] = dict()
 
         self.__data[name]["deleted"] = True
 

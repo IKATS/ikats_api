@@ -1,8 +1,7 @@
-# noinspection PyAbstractClass,PyMethodOverriding
 from ikats.client import TDMClient
 from ikats.client.opentsdb_client import OpenTSDBClient
-from ikats.client.tdm_client import DTYPE, IkatsNotFoundError
-from ikats.exception import IkatsConflictError
+from ikats.client.tdm_client import DTYPE
+from ikats.exceptions import IkatsConflictError, IkatsNotFoundError, IkatsException
 from ikats.manager.generic_ import IkatsGenericApiEndPoint
 from ikats.objects.timeseries_ import Timeseries
 from ikats.lib import check_type, check_is_fid_valid, check_is_valid_epoch
@@ -21,104 +20,108 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         self.tsdb_client = OpenTSDBClient(session=self.api.session)
         self.tdm_client = TDMClient(session=self.api.session)
 
-    def create_ref(self, fid):
+    def new(self, fid=None, *args, **kwargs):
         """
-        Create a reference of timeseries in temporal data database and associate it to fid
-        in temporal database for future use.
-        Shall be used before create method in case of parallel creation of data (import data via spark for example)
+        Create an empty local Timeseries (if fid not provided)
+        If fid is set, the identifier will be created in database (useful when importing data via spark for example)
 
-        :param fid: Functional Identifier of the TS in Ikats
+        :param fid: Identifier to create (if provided)
         :type fid: str
 
-        :return: A prepared Timeseries object
+        :return: the Timeseries object
         :rtype: Timeseries
+
+        :raises IkatsConflictError: if FID already present in database
         """
-        check_is_fid_valid(fid, raise_exception=True)
-        try:
-            # Check if fid already associated to an existing tsuid
-            tsuid = self.tdm_client.get_tsuid_from_fid(fid=fid)
-            # if fid already exist in database, raise a conflict exception
-            raise IkatsConflictError("%s already associated to an existing tsuid: %s" % (fid, tsuid))
+        if fid is None:
+            return Timeseries(api=self.api, *args, **kwargs)
+        else:
+            return self._create_ref(fid=fid)
 
-        except IkatsNotFoundError:
-            # Creation of a new tsuid
-            metric, tags = self.tsdb_client.gen_metric_tags()
-            tsuid = self.tsdb_client.assign_metric(metric=metric, tags=tags)
+    def get(self, fid=None, tsuid=None):
+        """
+        Returns an existing Timeseries object by providing either its FID or TSUID (only one shall be provided)
 
-            # finally importing tsuid/fid pair in non temporal database
-            self.tdm_client.import_fid(tsuid=tsuid, fid=fid)
+        :param fid: FID of the Timeseries
+        :param tsuid: TSUID of the Timeseries
 
-            return Timeseries(tsuid=tsuid, fid=fid, api=self.api)
+        :type fid: str
+        :type tsuid: str
 
-    def create(self, ts, parent=None, generate_metadata=True):
+        :return: The Timeseries object
+        :rtype: Timeseries
+
+        :raises ValueError: if both fid and tsuid are set (or none of them
+        """
+
+        if fid is not None and tsuid is not None:
+            raise ValueError("fid and tsuid are mutually exclusive")
+
+        if fid is not None:
+            tsuid = self.tsuid_from_fid(fid=fid, raise_exception=True)
+
+        return Timeseries(api=self.api, tsuid=tsuid, fid=fid)
+
+    def save(self, ts, parent=None, generate_metadata=True, raise_exception=True):
         """
         Import TS data points in database or update an existing TS with new points
 
-        if generate_metadata is set, the ikats_start_date, ikats_end_date and qual_nb_points will be
+        if generate_metadata is set or if no TSUID is present in ts object,
+        the ikats_start_date, ikats_end_date and qual_nb_points will be
         overwritten by the first point date, last point date and number of points in ts.data
 
         :param ts: Timeseries object containing information about what to create
         :param parent: optional, default None: Timeseries object of inheritance parent
         :param generate_metadata: Generate metadata (set to False when doing partial import) (Default: True)
+        :param raise_exception:
 
         :type ts: Timeseries
         :type parent: Timeseries
         :type generate_metadata: bool
+        :type raise_exception: bool
 
         :return: an object containing several information about the import
         :rtype: dict
+
         """
 
         # Input checks
         check_type(ts, Timeseries, "ts", raise_exception=True)
         check_type(parent, [Timeseries, None], "parent", raise_exception=True)
         check_type(generate_metadata, bool, "generate_metadata", raise_exception=True)
+        check_is_fid_valid(ts.fid, raise_exception=True)
 
-        # First, we shall create the TSUID reference (if not provided)
-        if ts.tsuid is None:
-            ts += self.create_ref(ts.fid)
-
-        # Link the FID to the TSUID
-        self.tdm_client.import_fid(tsuid=ts.tsuid, fid=ts.fid)
-
-        # Add points to this TSUID
-        start_date, end_date, nb_points = self.tsdb_client.add_points(tsuid=ts.tsuid, data=ts.data)
-
-        if generate_metadata:
-            self.tdm_client.metadata_update(ts.tsuid, 'ikats_start_date', start_date, data_type=DTYPE.date,
-                                            force_create=True)
-
-            self.tdm_client.metadata_update(ts.tsuid, 'ikats_end_date', end_date, data_type=DTYPE.date,
-                                            force_create=True)
-
-            self.tdm_client.metadata_update(ts.tsuid, 'qual_nb_points', nb_points, data_type=DTYPE.number,
-                                            force_create=True)
-
-        # Inherit from parent when it is defined
-        if parent is not None:
-            self.inherit(ts=ts, parent=parent)
-
-    def inherit(self, ts, parent):
-        """
-        Make a time series inherit of parent's metadata according to a pattern (not all metadata inherited)
-
-        :param ts: TS object in IKATS (which will inherit)
-        :param parent: TS object in IKATS of inheritance parent
-
-        :type ts: Timeseries
-        :param parent: Timeseries
-        """
         try:
-            metadata = self.tdm_client.metadata_get([parent])[parent]
-            for meta_name in metadata:
-                if not NON_INHERITABLE_PATTERN.match(meta_name):
-                    self.tdm_client.metadata_create(tsuid=ts.tsuid, name=meta_name, value=metadata[meta_name],
-                                                    force_update=True)
-        except(ValueError, TypeError, SystemError) as exception:
-            self.api.session.log.warning(
-                "Can't get metadata of parent TS (%s), nothing will be inherited; \nreason: %s", parent, exception)
+            # First, we shall create the TSUID reference (if not provided)
+            if ts.tsuid is None:
+                ts.tsuid = self._create_ref(ts.fid).tsuid
+                # If the TS is fresh, we force the creation of the metadata
+                generate_metadata = True
 
-    def read(self, ts, sd=None, ed=None):
+            # Add points to this TSUID
+            start_date, end_date, nb_points = self.tsdb_client.add_points(tsuid=ts.tsuid, data=ts.data)
+
+            if generate_metadata:
+                self.tdm_client.metadata_update(tsuid=ts.tsuid, name='ikats_start_date', value=start_date,
+                                                data_type=DTYPE.date, force_create=True)
+
+                self.tdm_client.metadata_update(tsuid=ts.tsuid, name='ikats_end_date', value=end_date,
+                                                data_type=DTYPE.date, force_create=True)
+
+                self.tdm_client.metadata_update(tsuid=ts.tsuid, name='qual_nb_points', value=nb_points,
+                                                data_type=DTYPE.number, force_create=True)
+
+            # Inherit from parent when it is defined
+            if parent is not None:
+                self.inherit(ts=ts, parent=parent)
+        except IkatsException as exc:
+            if raise_exception:
+                raise
+            else:
+                return False
+        return True
+
+    def load(self, ts, sd=None, ed=None):
         """
         Retrieve the data corresponding to a Timeseries object
         Update it with data points if no sd or ed are specified
@@ -166,10 +169,6 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
 
         # TODO transform data here
 
-        # Update the timeseries object
-        if flag_update_object:
-            ts.data = data_points
-
         # Return the points
         return data_points
 
@@ -209,7 +208,27 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
                     else:
                         return False
 
-        self.tdm_client.remove_ts(tsuid=tsuid, raise_exception=raise_exception)
+        return self.tdm_client.remove_ts(tsuid=tsuid, raise_exception=raise_exception)
+
+    def inherit(self, ts, parent):
+        """
+        Make a time series inherit of parent's metadata according to a pattern (not all metadata inherited)
+
+        :param ts: TS object in IKATS (which will inherit)
+        :param parent: TS object in IKATS of inheritance parent
+
+        :type ts: Timeseries
+        :param parent: Timeseries
+        """
+        try:
+            metadata = self.tdm_client.metadata_get([parent])[parent]
+            for meta_name in metadata:
+                if not NON_INHERITABLE_PATTERN.match(meta_name):
+                    self.tdm_client.metadata_create(tsuid=ts.tsuid, name=meta_name, value=metadata[meta_name],
+                                                    force_update=True)
+        except(ValueError, TypeError, SystemError) as exception:
+            self.api.session.log.warning(
+                "Can't get metadata of parent TS (%s), nothing will be inherited; \nreason: %s", parent, exception)
 
     def list(self):
         """
@@ -248,12 +267,15 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
 
         return self.tdm_client.get_ts_from_metadata(constraint=constraint)
 
-    def fid_from_tsuid(self, tsuid):
+    def fid_from_tsuid(self, tsuid, raise_exception=True):
         """
         Retrieve the functional ID associated to the tsuid param.
 
         :param tsuid: one tsuid value
+        :param raise_exception: Allow to specify if the action shall assert if not found or not
+
         :type tsuid: str
+        :type raise_exception: bool
 
         :return: retrieved functional identifier value
         :rtype: str
@@ -262,12 +284,17 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         :raises ValueError: no functional ID matching the tsuid
         :raises ServerError: http answer with status : 500 <= status < 600
         """
-        # TODO harmonize with tsuid_from_fid (raises)
-        return self.tdm_client.get_func_id_from_tsuid(tsuid=tsuid)
+        try:
+            return self.tdm_client.get_func_id_from_tsuid(tsuid=tsuid)
+        except IkatsNotFoundError:
+            if raise_exception:
+                raise
+            else:
+                return None
 
     def tsuid_from_fid(self, fid, raise_exception=True):
         """
-        Retrieve the functional ID associated to the tsuid param.
+        Retrieve the TSUID associated to the functional ID param.
 
         :param fid: the functional Identifier
         :param raise_exception: Allow to specify if the action shall assert if not found or not
@@ -286,7 +313,7 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
 
         # Check if fid already associated to an existing tsuid
         try:
-            self.tdm_client.get_tsuid_from_fid(fid=fid)
+            return self.tdm_client.get_tsuid_from_fid(fid=fid)
         except IkatsNotFoundError:
             if raise_exception:
                 raise
@@ -308,3 +335,34 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         """
 
         return self.tsdb_client.get_nb_points_of_tsuid(tsuid=tsuid)
+
+    def _create_ref(self, fid):
+        """
+        Create a reference of timeseries in temporal data database and associate it to fid
+        in temporal database for future use.
+        Shall be used before create method in case of parallel creation of data (import data via spark for example)
+
+        :param fid: Functional Identifier of the TS in Ikats
+        :type fid: str
+
+        :return: A prepared Timeseries object
+        :rtype: Timeseries
+
+        :raises IkatsConflictError: if FID already present in database
+        """
+        check_is_fid_valid(fid, raise_exception=True)
+        try:
+            # Check if fid already associated to an existing tsuid
+            tsuid = self.tdm_client.get_tsuid_from_fid(fid=fid)
+            # if fid already exist in database, raise a conflict exception
+            raise IkatsConflictError("%s already associated to an existing tsuid: %s" % (fid, tsuid))
+
+        except IkatsNotFoundError:
+            # Creation of a new tsuid
+            metric, tags = self.tsdb_client.gen_metric_tags()
+            tsuid = self.tsdb_client.assign_metric(metric=metric, tags=tags)
+
+            # finally importing tsuid/fid pair in non temporal database
+            self.tdm_client.import_fid(tsuid=tsuid, fid=fid)
+
+            return Timeseries(tsuid=tsuid, fid=fid, api=self.api)

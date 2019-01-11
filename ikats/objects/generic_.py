@@ -20,7 +20,3 @@ class IkatsObject:
     @api.setter
     def api(self, value):
         self.__api = value
-        # if type(value) == IkatsAPI:
-        #     self.__api = value
-        # else:
-        #     raise TypeError("Type of session shall be IkatsAPI, not %s" % (type(value)))

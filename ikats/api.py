@@ -32,7 +32,7 @@ class IkatsAPI:
     Common library of endpoints used by algorithms developers & contributors to access the data handled by IKATS.
     """
 
-    def __init__(self, host="http://localhost", port="80", sc=None, name="IKATS_SESSION", session=None):
+    def __init__(self, host="http://localhost", port="80", sc=None, name="IKATS", session=None):
         self.__session = None
         if session is not None:
             self.session = session
@@ -59,23 +59,9 @@ class IkatsAPI:
     def __repr__(self):
         return "IKATS API"
 
-    def dataset(self, *args, **kwargs):
-        """
-        Create a Dataset Object with session
-        :rtype: Dataset
-        """
-        return Dataset(api=self, *args, **kwargs)
-
-    def timeseries(self, *args, **kwargs):
-        """
-        Create a Dataset Object with session
-        :rtype: Timeseries
-        """
-        return Timeseries(api=self, *args, **kwargs)
-
     def metadata(self, *args, **kwargs):
         """
-        Create a Dataset Object with session
+        Create a Dataset Object with api
         :rtype: Metadata
         """
         return Metadata(api=self, *args, **kwargs)

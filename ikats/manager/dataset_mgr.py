@@ -1,5 +1,6 @@
 # noinspection PyMethodOverriding,PyAbstractClass
 from ikats.client import TDMClient
+from ikats.exceptions import IkatsConflictError
 from ikats.lib import check_type, check_is_valid_ds_name
 from ikats.manager.generic_ import IkatsGenericApiEndPoint
 from ikats.objects.dataset_ import Dataset
@@ -14,6 +15,28 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = TDMClient(session=self.api.session)
+
+    def new(self, name=None, desc=None, ts=None):
+        """
+        Create an empty local Dataset with optional name
+
+        :param name: Dataset name to use
+        :param desc: description of the dataset
+        :param ts: list of Timeseries composing the dataset
+
+        :type name: str
+        :type desc: str
+        :type ts: list of Timeseries
+
+        :return: the Dataset object
+        :rtype: Dataset
+
+        :raises IkatsConflictError: if name already present in database
+        """
+        ds_list = self.client.dataset_list()
+        if len([x for x in ds_list if x['name'] == name]) > 0:
+            raise IkatsConflictError("The dataset name already exist in database, use 'get' method instead")
+        return Dataset(api=self.api, name=name, desc=desc, ts=ts)
 
     def save(self, ds):
         """
@@ -34,31 +57,33 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
 
         self.client.dataset_create(
             name=ds.name,
-            description=ds.description,
+            description=ds.desc,
             ts=[x.tsuid for x in ds.ts])
 
-    def read(self, ds):
+    def get(self, name):
         """
-        Reads the dataset information in database and update the object
+        Reads the dataset information in database
         Retrieves description and list of Timeseries
 
-        :param ds: Dataset Object to read
-        :type ds: Dataset
+        :param name: Dataset name
+        :type name: str
 
-        :raise Type: if dataset malformed
+        :raise TypeError: if dataset name is malformed
+        :raise IkatsNotFoundError: if dataset not found in database
         """
-        check_type(value=ds, allowed_types=Dataset, var_name="ds", raise_exception=True)
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
 
-        result = self.client.dataset_read(ds.name)
-        ds.ts = [Timeseries(tsuid=x['tsuid'], fid=x['funcId'], api=self.api) for x in result.get('ts_list', [])]
-        ds.description = result.get("description", "")
+        result = self.client.dataset_read(name)
+        ts = [Timeseries(tsuid=x['tsuid'], fid=x['funcId'], api=self.api) for x in result.get('ts_list', [])]
+        description = result.get("description", "")
+        return Dataset(api=self.api, name=name, desc=description, ts=ts)
 
-    def delete(self, ds, deep=False):
+    def delete(self, name, deep=False):
         """
-        Remove data_set from base
+        Remove dataset from base
 
-        :param ds: Dataset to delete
-        :type ds: str or Dataset
+        :param name: Dataset name to delete
+        :type name: str
 
         :param deep: true to deeply remove dataset (tsuid and metadata erased)
         :type deep: boolean
@@ -73,13 +98,11 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         :raises TypeError: if *name* is not a str
         :raises TypeError: if *deep* is not a bool
         """
-        check_type(value=ds, allowed_types=[Dataset, str], var_name="ds", raise_exception=True)
-        if type(ds) == Dataset:
-            ds = ds.name
-        check_is_valid_ds_name(value=ds, raise_exception=True)
         check_type(value=deep, allowed_types=[bool, None], var_name="deep", raise_exception=True)
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+        check_is_valid_ds_name(value=name, raise_exception=True)
 
-        return self.client.dataset_delete(name=ds, deep=deep)
+        return self.client.dataset_delete(name=name, deep=deep)
 
     def list(self):
         """
@@ -89,5 +112,4 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         :rtype: list of Dataset
         """
 
-        return [Dataset(name=x["name"], description=x["description"], api=self.api) for x in
-                self.client.dataset_list()]
+        return [Dataset(name=x["name"], desc=x["description"], api=self.api) for x in self.client.dataset_list()]

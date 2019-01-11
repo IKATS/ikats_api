@@ -48,14 +48,19 @@ def check_is_fid_valid(fid, raise_exception=True):
     :raises ValueError: if FID is not well formatted
     """
     check_status = True
+    if fid is None:
+        if raise_exception:
+            raise ValueError("FID shall be set")
+        else:
+            check_status = False
     if type(fid) != str:
         if raise_exception:
-            raise TypeError("Type of '%s' shall be str, not %s" % (fid, type(fid)))
+            raise TypeError("Type of fid: '%s' shall be str, not %s" % (fid, type(fid)))
         else:
             check_status = False
     if len(fid) < 3:
         if raise_exception:
-            raise ValueError("fid shall have at least 3 characters" % fid)
+            raise ValueError("fid shall have at least 3 characters: '%s'" % fid)
         else:
             check_status = False
     if " " in fid:

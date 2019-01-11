@@ -13,7 +13,7 @@ class TestMetadata(TestCase):
 
         # Init
         api = IkatsAPI()
-        ts = api.timeseries(tsuid="ABCD")
+        ts = api.ts.new(tsuid="ABCD")
 
         # Provide a number, get a string
         ts.metadata.set(name="myMD", value=42, dtype=DTYPE.STRING)
@@ -39,10 +39,10 @@ class TestMetadata(TestCase):
     def test_save(self):
         # Init
         api = IkatsAPI()
-        ts = api.timeseries(tsuid="ABCD")
+        ts = api.ts.new(tsuid="ABCD")
         ts.metadata.set(name="myMD", value=42, dtype=DTYPE.STRING)
 
         self.assertTrue(ts.metadata.save())
 
-        ts2 = api.timeseries(tsuid="ABCD")
+        ts2 = api.ts.new(tsuid="ABCD")
         self.assertEqual("42", ts2.metadata.get("myMD"))

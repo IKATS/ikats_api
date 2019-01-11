@@ -23,11 +23,6 @@ import mimetypes
 #    * the pattern of the url to connect to
 TEMPLATES = {
 
-    # TSDB
-    'direct_extract_by_tsuid': {
-        'pattern': '/session/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
-    },
-
     # NON TEMPORAL DATA MANAGER
     'add_process_data': {
         'pattern': '/processdata/{process_id}',

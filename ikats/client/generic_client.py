@@ -95,11 +95,12 @@ class RestClientResponse(object):
 
         :raises TypeError: error when there is no content specifically determined by content_type
         """
-        if self.content_type == 'application/octet-stream':
+
+        if 'application/octet-stream' in self.content_type:
             return self.content
-        elif self.content_type == 'application/json':
+        elif 'application/json' in self.content_type:
             return self.json
-        elif self.content_type == 'text/plain':
+        elif 'text/plain' in self.content_type:
             return self.text
         else:
             raise TypeError("Failed to find appropriate content for content-type=%s", self.content_type)
@@ -126,7 +127,7 @@ class GenericClient(object):
 
     @session.setter
     def session(self, value):
-        check_type(value, IkatsSession, "session", raise_exception=True)
+        check_type(value=value, allowed_types=IkatsSession, var_name="session", raise_exception=True)
         if value.rs is None:
             raise ValueError("Requests Session not set in provided IKATS session")
         self.__session = value

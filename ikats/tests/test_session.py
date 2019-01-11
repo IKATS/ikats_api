@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import requests
 
-from ikats import IkatsSession
+from ikats.session_ import IkatsSession
 
 
 class TestSession(TestCase):

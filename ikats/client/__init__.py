@@ -14,12 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-# Simplify the import patterns for user
-# Instead of importing :
-#   from ikats.session.TemporalDataMgr import TemporalDataMgr
-# User will do:
-#   from ikats.session import TemporalDataMgr
-
 
 from pkgutil import extend_path
 

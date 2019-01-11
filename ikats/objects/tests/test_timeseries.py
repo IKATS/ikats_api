@@ -1,28 +1,113 @@
+import numpy as np
 from unittest import TestCase
 
 from ikats.api import IkatsAPI
+from ikats.exceptions import IkatsNotFoundError
+from ikats.extra.timeseries import gen_random_ts
+
+
+def delete_ts_if_exists(fid):
+    """
+    Delete a TS if it exists
+    Nothing is return
+    Useful to prepare environments
+
+    :param fid: FID of the TS to delete
+    """
+    api = IkatsAPI()
+
+    try:
+        ts = api.ts.get(fid=fid)
+        return api.ts.delete(ts=ts, raise_exception=False)
+    except IkatsNotFoundError:
+        return True
 
 
 class TestTimeseries(TestCase):
+    ts_to_delete = []
 
-    def test_new(self):
+    def test_new_local(self):
         """
         Creation of a Timeseries instance
         """
-        # Empty
         api = IkatsAPI()
 
-        # Cleanup
-        api.ts.delete(api.timeseries(fid="MyTS"), raise_exception=False)
+        # Empty TS
+        ts = api.ts.new()
 
-        ts = api.timeseries()
-
-        self.assertEqual(None, ts.tsuid)
-        self.assertEqual(None, ts.fid)
+        # Check
+        self.assertIsNone(ts.tsuid)
+        self.assertIsNone(ts.fid)
         self.assertEqual(0, len(ts.data))
         self.assertEqual(0, len(ts))
 
-        # Minimal data
-        ts = api.ts.create_ref(fid="MyTS")
-        self.assertEqual("MyTS", ts.fid)
-        self.assertEqual(None, ts.tsuid)
+    def test_from_scratch(self):
+        api = IkatsAPI()
+
+        # Create a new TS
+        ts = api.ts.new()
+        ts.data = gen_random_ts(sd=1000000000000, ed=1000000010000, nb_points=10)
+
+        # Check
+        self.assertEqual(10, len(ts))
+        # No FID provided
+        with self.assertRaises(ValueError):
+            ts.save()
+
+        ts.fid = "TEST_TS"
+        ts.save()
+
+        # TSUID has been set by the save action
+        self.assertIsNotNone(ts.tsuid)
+
+        # Minimum Metadata has been computed
+        self.assertEqual(ts.data[0][0], ts.metadata.get("ikats_start_date"))
+        self.assertEqual(ts.data[-1][0], ts.metadata.get("ikats_end_date"))
+        self.assertEqual(len(ts.data), ts.metadata.get("qual_nb_points"))
+
+        # Delete the TS
+        ts.delete()
+
+        # see bugs #2738
+        # with self.assertRaises(IkatsNotFoundError):
+        #    ts.delete()
+        # self.assertFalse(ts.delete(raise_exception=False))
+
+    def test_new_with_creation(self):
+        """
+        Creation of a Timeseries instance with reservation of the FID
+        """
+        fid = "TEST_TS"
+
+        api = IkatsAPI()
+        delete_ts_if_exists(fid=fid)
+
+        ts = api.ts.new(fid=fid)
+
+        # TSUID is filled
+        self.assertIsNotNone(ts.tsuid)
+        self.assertEqual(fid, ts.fid)
+
+        # No points are present
+        self.assertEqual(0, len(ts.data))
+        self.assertEqual(0, len(ts))
+
+        # Add points
+        ts.data = gen_random_ts(sd=1000000000000, ed=1000000010000, period=1000)
+        self.assertEqual(10, len(ts.data))
+
+        # Save TS (using the api method)
+        api.ts.save(ts)
+
+        # create a new instance of the same TS
+        ts2 = api.ts.get(fid=fid)
+
+        # Compare written data with read data
+        self.assertEqual(len(ts.data), len(ts2.data))
+        self.assertTrue(np.allclose(
+            np.array(ts.data, dtype=np.float64),
+            np.array(ts2.data, dtype=np.float64),
+            atol=1e-2))
+
+        # Delete TS using no exception raise
+        self.assertTrue(api.ts.delete(ts=ts2, raise_exception=False))

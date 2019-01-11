@@ -1,7 +1,7 @@
 
 # noinspection PyMethodOverriding,PyAbstractClass
 from ikats.client import NTDMClient
-from ikats.exception import IkatsException, IkatsNotFoundError
+from ikats.exceptions import IkatsException, IkatsNotFoundError
 from ikats.manager.generic_ import IkatsGenericApiEndPoint
 
 

@@ -18,7 +18,7 @@ limitations under the License.
 from enum import Enum
 
 from ikats.client import GenericClient
-from ikats.exception import *
+from ikats.exceptions import *
 from ikats.lib import check_type, check_is_fid_valid, check_is_valid_ds_name
 from ikats.client.generic_client import check_http_code, is_404
 
@@ -63,7 +63,7 @@ class DTYPE(Enum):
 
 class TDMClient(GenericClient):
     """
-    Temporal Data Manager session used to connect to JAVA Ikats API
+    Temporal Data Manager api used to connect to JAVA Ikats API
     """
 
     def __init__(self, *args, **kwargs):
@@ -146,18 +146,12 @@ class TDMClient(GenericClient):
            * *description* is the description sentence of the data set
         :rtype: dict
 
-        :raises TypeError: if data_set is not a str
+        :raises TypeError: if name is not a str
+        :raises IkatsNotFoundError: if dataset doesn't exist in database
         """
 
         # Checks inputs
-        if type(name) is not str:
-            self.session.log.error("name must be a string (got %s)", type(name))
-            raise TypeError("name must be a string (got %s)" % type(name))
-
-        # List of items to be replaced by in the template
-        uri_params = {
-            'name': name
-        }
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
 
         ret = {
             'ts_list': [],
@@ -167,7 +161,9 @@ class TDMClient(GenericClient):
         response = self.send(root_url=self.session.tdm_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['dataset_read'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'name': name
+                             })
 
         is_404(response=response, msg="Dataset %s not found in database" % name)
 
@@ -453,13 +449,11 @@ class TDMClient(GenericClient):
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
-            self.session.log.info("TSUID:%s - MetaData created %s(%s)=%s", tsuid, name, data_type, value)
             return True
         elif response.status_code == 409:
             if force_update:
                 # Error occurred (can't create a metadata that already exists - conflict)
                 # Try to update it because it is wanted
-                self.session.log.info("TSUID:%s - MetaData updated %s=%s", tsuid, name, value)
                 return self.metadata_update(tsuid=tsuid, name=name, value=value, force_create=False)
             else:
                 self.session.log.warning("TSUID:%s - MetaData already exists (not updated) %s=%s", tsuid, name, value)
@@ -537,13 +531,11 @@ class TDMClient(GenericClient):
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
-            self.session.log.info("TSUID:%s - MetaData updated %s=%s", tsuid, name, value)
             return True
         elif response.status_code == 404:
             if force_create:
                 # Error occurred (can't update a metadata that doesn't exists)
                 # Try to create it because it is wanted
-                self.session.log.info("TSUID:%s - MetaData created %s=%s", tsuid, name, value)
                 return self.metadata_create(tsuid=tsuid, name=name, value=value, data_type=data_type,
                                             force_update=False)
             else:

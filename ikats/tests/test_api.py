@@ -5,7 +5,7 @@ from ikats import IkatsAPI
 
 class TestApi(TestCase):
     def test_ds_list(self):
-        # Default session
+        # Default api
         api = IkatsAPI(host="http://localhost", port=80)
         ds_list = api.ds.list()
         self.assertLess(0, len(ds_list))
