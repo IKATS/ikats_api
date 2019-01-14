@@ -2,25 +2,8 @@ import numpy as np
 from unittest import TestCase
 
 from ikats.api import IkatsAPI
-from ikats.exceptions import IkatsNotFoundError
 from ikats.extra.timeseries import gen_random_ts
-
-
-def delete_ts_if_exists(fid):
-    """
-    Delete a TS if it exists
-    Nothing is return
-    Useful to prepare environments
-
-    :param fid: FID of the TS to delete
-    """
-    api = IkatsAPI()
-
-    try:
-        ts = api.ts.get(fid=fid)
-        return api.ts.delete(ts=ts, raise_exception=False)
-    except IkatsNotFoundError:
-        return True
+from ikats.objects.tests.lib import delete_ts_if_exists
 
 
 class TestTimeseries(TestCase):

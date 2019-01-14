@@ -51,7 +51,7 @@ class Metadata(IkatsObject):
     def fetch(self):
         """
         Fetch Metadata for the linked TSUID.
-        In case of conflict between fetch and local data, fetch ones will overwrite local ones.
+        Overwrite local cache
         """
         if self.tsuid is None:
             raise ValueError("No TSUID linked")
@@ -62,11 +62,7 @@ class Metadata(IkatsObject):
         for md_name in results:
             results[md_name]["deleted"] = False
 
-        # Empty local database
-        if self.__data is None:
-            self.__data = dict()
-        # Overwrite previous ones
-        self.__data.update(results)
+        self.__data = results
 
     def set(self, name, value, dtype=None):
         """
@@ -193,7 +189,7 @@ class Metadata(IkatsObject):
         result = True
         for md_name in self.__data:
             if self.__data[md_name]["deleted"]:
-                result = result and self.api.md.delete()
+                result = result and self.api.md.delete(tsuid=self.tsuid, name=md_name)
             else:
                 result = result and self.api.md.create(tsuid=self.tsuid,
                                                        name=md_name,

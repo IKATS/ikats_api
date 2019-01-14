@@ -202,7 +202,7 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
                     else:
                         return False
 
-        return self.tdm_client.remove_ts(tsuid=tsuid, raise_exception=raise_exception)
+        return self.tdm_client.ts_delete(tsuid=tsuid, raise_exception=raise_exception)
 
     def inherit(self, ts, parent):
         """

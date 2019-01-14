@@ -1268,7 +1268,7 @@ class TestTemporalDataMgr(TestCase):
 
         tdm = TDMClient(TEST_HOST, TEST_PORT)
 
-        tdm.remove_ts('tsuid')
+        tdm.ts_delete('tsuid')
 
     @fake_server
     def test_remove_data_set(self):

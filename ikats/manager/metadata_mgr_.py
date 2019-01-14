@@ -120,7 +120,7 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
         # Converts DTYPE
         for md in result:
-            result[md]["dtype"] = _to_object_type(C_TYPE[result[md]["type"]])
+            result[md]["dtype"] = _to_object_type(C_TYPE[result[md]["dtype"]])
 
         return result
 
@@ -173,5 +173,4 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
         :return: The action status
         """
-        # TODO
-        pass
+        return self.client.metadata_delete(tsuid=tsuid, name=name)

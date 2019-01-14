@@ -20,7 +20,7 @@ from enum import Enum
 from ikats.client import GenericClient
 from ikats.exceptions import *
 from ikats.lib import check_type, check_is_fid_valid, check_is_valid_ds_name
-from ikats.client.generic_client import check_http_code, is_404
+from ikats.client.generic_client import check_http_code, is_404, is_4xx, is_5xx
 
 # List of templates used to build URL.
 #
@@ -38,6 +38,7 @@ TEMPLATES = {
     'lookup_meta_data': '/metadata/list/json',
     'import_meta_data': '/metadata/import/{tsuid}/{name}/{value}',
     'update_meta_data': '/metadata/{tsuid}/{name}/{value}',
+    'metadata_delete': '/metadata/{tsuid}/{name}',
     'import_meta_data_file': '/metadata/import/file',
     'dataset_create': '/dataset/import/{data_set}',
     'dataset_read': '/dataset/{name}',
@@ -547,6 +548,56 @@ class TDMClient(GenericClient):
             response.status_code)
         return False
 
+    def metadata_delete(self, tsuid, name, raise_exception=True):
+        """
+        Delete a metadata
+
+        Corresponding web app resource operation: **removeMetaData**
+
+        :param tsuid: TSUID of the Timeseries where is bound the metadata
+        :param name: Metadata name
+
+        :type tsuid: str
+        :type name: str
+
+        :return: execution status_code, True if import successful, False otherwise
+        :rtype: bool
+
+        :raises TypeError: if *tsuid* not a str
+        :raises TypeError: if *name* not a str
+
+        :raises ValueError: if *tsuid* is empty
+        :raises ValueError: if *name* is empty
+        """
+
+        # Checks inputs
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+
+        if tsuid == "":
+            self.session.log.error("tsuid must not be empty")
+            raise ValueError("tsuid must not be empty")
+        if name == "":
+            self.session.log.error("name must not be empty")
+            raise ValueError("name must not be empty")
+
+        # List of items to be replaced by in the template
+        uri_params = {
+            'tsuid': tsuid,
+            'name': name,
+        }
+
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
+                             verb=GenericClient.VERB.DELETE,
+                             template=TEMPLATES['metadata_delete'],
+                             uri_params=uri_params)
+
+        is_404(response, "Metadata '%s' not found for TS '%s'" % (name, tsuid))
+        is_4xx(response, msg="Unexpected client error : {code}")
+        is_5xx(response, msg="Unexpected server error : {code}")
+
+        return True
+
     def metadata_get(self, ts_list):
         """
         Request for metadata of a TS or a list of TS
@@ -652,8 +703,8 @@ class TDMClient(GenericClient):
         :returns: metadata for each TS
         :rtype: dict (key is TS identifier, value is list of metadata with its associated data type)
             | {
-            |     'TS1': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}},
-            |     'TS2': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}}
+            |     'TS1': {'param1':{'value':'value1', 'dtype': 'dtype'}, 'param2':{'value':'value2', 'dtype': 'dtype'}},
+            |     'TS2': {'param1':{'value':'value1', 'dtype': 'dtype'}, 'param2':{'value':'value2', 'dtype': 'dtype'}}
             | }
 
         :param ts_list: list of TS identifier
@@ -704,8 +755,8 @@ class TDMClient(GenericClient):
             #   {
             #   'TS1':
             #       {
-            #           'unit':{'value':'meters', 'type':'string'},
-            #           'FlightPhase': {'value':'TakeOff', 'type':'string'},
+            #           'unit':{'value':'meters', 'dtype':'string'},
+            #           'FlightPhase': {'value':'TakeOff', 'dtype':'string'},
             #       }
             #   }
 
@@ -713,14 +764,18 @@ class TDMClient(GenericClient):
             for ts in working_ts_list:
                 output_dict[ts] = {}
 
-            # Fill in mete data for each ts
+            # No result in metadata, return directly the empty list
+            if response.json == "{}":
+                return output_dict
+
+            # Fill in metadata for each ts
             for content in response.json:
 
                 # Init the key if first meet
                 if content['tsuid'] not in output_dict:
                     output_dict[content['tsuid']] = {}
 
-                output_dict[content['tsuid']][content['name']] = {'value': content['value'], 'type': content['dtype']}
+                output_dict[content['tsuid']][content['name']] = {'value': content['value'], 'dtype': content['dtype']}
 
         return output_dict
 
@@ -987,7 +1042,7 @@ class TDMClient(GenericClient):
             self.session.log.error(err_msg)
             raise IkatsException(err_msg)
 
-    def remove_ts(self, tsuid, raise_exception=True):
+    def ts_delete(self, tsuid, raise_exception=True):
         """
         Remove timeseries from base
         return bool status except if raise_exception is set to True.
