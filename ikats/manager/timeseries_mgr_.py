@@ -186,7 +186,7 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         :raises SystemError: if any other unhandled error occurred
         """
 
-        check_type(value=ts, allowed_types=[str, Timeseries], var_name="ts", raise_exception=raise_exception)
+        check_type(value=ts, allowed_types=[str, Timeseries], var_name="ts", raise_exception=True)
 
         tsuid = ts
 

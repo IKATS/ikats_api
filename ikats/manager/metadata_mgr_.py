@@ -173,4 +173,4 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
         :return: The action status
         """
-        return self.client.metadata_delete(tsuid=tsuid, name=name)
+        return self.client.metadata_delete(tsuid=tsuid, name=name, raise_exception=raise_exception)
