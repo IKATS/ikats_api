@@ -27,7 +27,7 @@ class Timeseries(IkatsObject):
     def data(self):
         if not self.__flag_data_read and self.__tsuid is not None:
             try:
-                self.api.ts.load(ts=self)
+                self.__data = self.api.ts.load(ts=self)
             except:
                 # For fresh created Timeseries, there is no metadata so the `load` method can't be performed
                 # since it needs the ikats_start_date and ikats_end_date to work properly
@@ -113,6 +113,12 @@ class Timeseries(IkatsObject):
 
     def get_as_pd_array(self):
         pass
+
+    def load(self):
+        """
+        Loads data points from database and update local object and overwrite any existing points in local object
+        """
+        self.__data = self.api.ts.load(ts=self)
 
     def __add__(self, other):
         ts = copy.deepcopy(self)

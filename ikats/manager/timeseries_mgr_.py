@@ -151,12 +151,6 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
         check_type(value=sd, allowed_types=[int, None], var_name="sd", raise_exception=True)
         check_type(value=ed, allowed_types=[int, None], var_name="ed", raise_exception=True)
 
-        # If sd and ed are manually set, the original object shall not be updated
-        # because we retrieve a partial set of points
-        flag_update_object = False
-        if sd is None and ed is None:
-            flag_update_object = True
-
         if sd is None:
             sd = ts.metadata.get(name="ikats_start_date")
         check_is_valid_epoch(value=sd, raise_exception=True)

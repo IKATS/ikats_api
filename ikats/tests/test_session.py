@@ -14,7 +14,7 @@ class TestSession(TestCase):
 
         self.assertEqual("%s:%s/pybase/ikats/algo/catalogue" % (s.host, s.port), s.catalog_url)
         self.assertEqual("%s:%s/pybase/ikats/algo/execute" % (s.host, s.port), s.engine_url)
-        self.assertEqual("%s:%s/datamodel-api/TemporalDataManagerWebApp/webapi" % (s.host, s.port), s.tdm_url)
+        self.assertEqual("%s:%s/datamodel-api" % (s.host, s.port), s.tdm_url)
         self.assertEqual("%s:%s/opentsdb" % (s.host, s.port), s.tsdb_url)
         self.assertEqual(requests.Session, type(s.rs))
 
@@ -46,12 +46,3 @@ class TestSession(TestCase):
         # Bad IP
         with self.assertRaises(ValueError):
             IkatsSession(host="https://1.2.3.4.5")
-
-    def test_connection(self):
-        """
-        Embedded connection validator
-        """
-        s = IkatsSession()
-        self.assertTrue(s.test_connection())
-        s = IkatsSession(host="http://unknownhost.com")
-        self.assertFalse(s.test_connection())

@@ -17,7 +17,7 @@ limitations under the License.
 
 from enum import Enum
 
-from ikats.exception import IkatsInputError, IkatsNotFoundError, IkatsClientError, IkatsServerError
+from ikats.exceptions import IkatsInputError, IkatsNotFoundError, IkatsClientError, IkatsServerError
 from ikats.session_ import IkatsSession
 from ikats.client import build_json_files, close_files
 from ikats.lib import check_type
@@ -155,7 +155,8 @@ class GenericClient(object):
              data=None,
              json_data=None,
              headers=None,
-             timeout=300):
+             timeout=300,
+             session=None):
         """
         Generic call command that should not be called directly
 
@@ -179,6 +180,8 @@ class GenericClient(object):
             -note: when json is not None, data must be None
         :param headers: any headers to provide in request
         :param timeout: override the default timeout (300) before considering request as "lost"
+        :param session: allow to use a specific session (instead of the provided one)
+                        Useful when needing to write multiple times in a short time
 
         :type root_url: str
         :type template: str
@@ -190,6 +193,7 @@ class GenericClient(object):
         :type json_data: object
         :type headers: dict
         :type timeout: int
+        :type session: requests.session
 
         :return: the response of the request
         :rtype: RestClientResponse
@@ -212,31 +216,36 @@ class GenericClient(object):
         # Converts file to 'requests' module format
         json_file = build_json_files(files)
 
+        # Use custom session if provided
+        session_to_use = self.session.rs
+        if session is not None:
+            session_to_use = session
+
         # Dispatch method
         try:
             if verb == GenericClient.VERB.POST:
-                result = self.session.rs.post(url,
-                                              data=data,
-                                              json=json_data,
-                                              files=json_file,
-                                              params=q_params,
-                                              timeout=timeout,
-                                              headers=headers)
+                result = session_to_use.post(url,
+                                             data=data,
+                                             json=json_data,
+                                             files=json_file,
+                                             params=q_params,
+                                             timeout=timeout,
+                                             headers=headers)
             elif verb == GenericClient.VERB.GET:
-                result = self.session.rs.get(url,
-                                             params=q_params,
-                                             timeout=timeout,
-                                             headers=headers)
+                result = session_to_use.get(url,
+                                            params=q_params,
+                                            timeout=timeout,
+                                            headers=headers)
             elif verb == GenericClient.VERB.PUT:
-                result = self.session.rs.put(url,
-                                             params=q_params,
-                                             timeout=timeout,
-                                             headers=headers)
+                result = session_to_use.put(url,
+                                            params=q_params,
+                                            timeout=timeout,
+                                            headers=headers)
             elif verb == GenericClient.VERB.DELETE:
-                result = self.session.rs.delete(url,
-                                                params=q_params,
-                                                timeout=timeout,
-                                                headers=headers)
+                result = session_to_use.delete(url,
+                                               params=q_params,
+                                               timeout=timeout,
+                                               headers=headers)
             else:
                 raise RuntimeError("Verb [%s] is unknown, shall be one defined by VERB Enumerate" % verb)
 

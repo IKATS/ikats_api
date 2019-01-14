@@ -68,6 +68,7 @@ class TDMClient(GenericClient):
 
     def __init__(self, *args, **kwargs):
         super(TDMClient, self).__init__(*args, **kwargs)
+        self.root_url = "/TemporalDataManagerWebApp/webapi"
 
     def get_ts_list(self):
         """
@@ -76,7 +77,7 @@ class TDMClient(GenericClient):
         :return: the list of TSUID with their associated metrics
         :rtype: list
         """
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_ts_list'])
 
@@ -122,7 +123,7 @@ class TDMClient(GenericClient):
             'tsuidList': ','.join(ts),
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['dataset_create'],
                              uri_params=uri_params,
@@ -158,7 +159,7 @@ class TDMClient(GenericClient):
             'description': None
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['dataset_read'],
                              uri_params={
@@ -207,7 +208,7 @@ class TDMClient(GenericClient):
         template = 'dataset_remove'
         if deep:
             template = 'dataset_deep_remove'
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES[template],
                              uri_params={
@@ -226,7 +227,7 @@ class TDMClient(GenericClient):
         :rtype: list of dict
         """
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_data_set_list'])
 
@@ -272,7 +273,7 @@ class TDMClient(GenericClient):
             'fid': fid
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['import_fid'],
                              uri_params=uri_params)
@@ -313,7 +314,7 @@ class TDMClient(GenericClient):
             'tsuid': tsuid
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_fid'],
                              uri_params=uri_params)
@@ -358,7 +359,7 @@ class TDMClient(GenericClient):
             'tsuid': tsuid
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['delete_fid'],
                              uri_params=uri_params)
@@ -441,7 +442,7 @@ class TDMClient(GenericClient):
         # Data type of the meta data
         q_params = {'dtype': data_type.value}
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['import_meta_data'],
                              uri_params=uri_params,
@@ -524,7 +525,7 @@ class TDMClient(GenericClient):
             'value': value,
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.PUT,
                              template=TEMPLATES['update_meta_data'],
                              uri_params=uri_params)
@@ -593,7 +594,7 @@ class TDMClient(GenericClient):
             # Filling query parameters
             q_params = {'tsuid': ','.join(working_ts_list)}
 
-            response = self.send(root_url=self.session.tdm_url,
+            response = self.send(root_url=self.session.tdm_url + self.root_url,
                                  verb=GenericClient.VERB.GET,
                                  template=TEMPLATES['lookup_meta_data'],
                                  q_params=q_params)
@@ -682,7 +683,7 @@ class TDMClient(GenericClient):
             # Filling query parameters
             q_params = {'tsuid': ','.join(working_ts_list)}
 
-            response = self.send(root_url=self.session.tdm_url,
+            response = self.send(root_url=self.session.tdm_url + self.root_url,
                                  verb=GenericClient.VERB.GET,
                                  template=TEMPLATES['lookup_meta_data'],
                                  q_params=q_params)
@@ -756,7 +757,7 @@ class TDMClient(GenericClient):
             self.session.log.error("constraint must be a dict")
             raise TypeError("constraint must be a dict")
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['ts_match'],
                              q_params=constraint)
@@ -784,7 +785,7 @@ class TDMClient(GenericClient):
         if not isinstance(tsuid, str):
             raise TypeError("tsuid type must be str")
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_one_functional_identifier'],
                              uri_params={'tsuid': tsuid},
@@ -849,10 +850,9 @@ class TDMClient(GenericClient):
         my_filter = dict()
         my_filter[criterion_type] = criteria_list
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['search_functional_identifier_list'],
-                             uri_params=None,
                              data=my_filter,
                              files=None)
         check_http_code(response)
@@ -872,7 +872,7 @@ class TDMClient(GenericClient):
         :raises IkatsException: for any other error during the request
         """
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['create_table'],
                              json_data=data,
@@ -911,7 +911,7 @@ class TDMClient(GenericClient):
         :raises IkatsInputError: for any error present in the inputs
         :raises IkatsException: for any other error during the request
         """
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['list_tables'],
                              uri_params={'name': name, 'strict': strict},
@@ -942,7 +942,7 @@ class TDMClient(GenericClient):
         :raise IkatsException: any other error
         """
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['read_table'],
                              uri_params={'name': name},
@@ -971,7 +971,7 @@ class TDMClient(GenericClient):
 
         """
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['delete_table'],
                              uri_params={'name': name})
@@ -1020,7 +1020,7 @@ class TDMClient(GenericClient):
             'tsuid': tsuid
         }
 
-        response = self.send(root_url=self.session.tdm_url,
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['remove_ts'],
                              uri_params=uri_params)

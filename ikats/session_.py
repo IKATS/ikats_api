@@ -52,28 +52,13 @@ class IkatsSession:
 
         self.catalog_url = "/pybase/ikats/algo/catalogue"
         self.engine_url = "/pybase/ikats/algo/execute"
-        self.tdm_url = "/datamodel-api/TemporalDataManagerWebApp/webapi"
+        self.tdm_url = "/datamodel-api"
         self.tsdb_url = "/opentsdb"
 
         self.name = name
         self.log = logging.getLogger(str(self.name))
         self.log.addHandler(logging.StreamHandler())
         self.log.setLevel(logging.DEBUG)
-
-    def test_connection(self):
-        """
-        Test the connection to the backend.
-
-        :returns: True if backend is alive, False otherwise
-        """
-        try:
-            tdm_result = requests.get("%s/dataset/" % self.tdm_url, timeout=1).status_code
-            engine_result = requests.get("%s" % self.tdm_url, timeout=1).status_code
-            tsdb_result = requests.get("%s" % self.tsdb_url, timeout=1).status_code
-            catalog_result = requests.get("%s" % self.catalog_url, timeout=1).status_code
-            return tdm_result in [200, 404] and tsdb_result == 200 and engine_result == 404 and catalog_result == 404
-        except requests.exceptions.ReadTimeout:
-            return False
 
     @property
     def rs(self):

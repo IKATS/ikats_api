@@ -14,19 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
+import json
+
 import numpy as np
 import time
 from datetime import datetime
 import string
-import requests
 
 from ikats.client import GenericClient
-from ikats.exception import IkatsNotFoundError
+from ikats.client.generic_client import is_4xx, is_5xx
+from ikats.exceptions import IkatsNotFoundError, IkatsServerError
 
 TEMPLATES = {
     'direct_extract_by_tsuid': '/api/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
     'assign_metric': '/api/uid/assign?metric={metric}&tagk={tagk}&tagv={tagv}',
-    'add_points': '/api/put?details&sync&sync_timeout={timeout}',
+    'add_points': '/api/put?details&ms=true&sync',
     'points_count': '/api/query?start=0&tsuid=sum:1y-count:{tsuid}',
     'get_metric_tags_from_tsuid': '/api/uid/uidmeta?uid={uid}&type={item_type}'
 }
@@ -112,7 +114,7 @@ class OpenTSDBClient(GenericClient):
 
             if 200 <= response.status_code < 300:
                 try:
-                    result = response.json()['name']
+                    result = response.json['name']
                 except:
                     raise ValueError("OpenTSDB result not parsable (got:%s)" % response.status_code)
             else:
@@ -315,26 +317,41 @@ class OpenTSDBClient(GenericClient):
             "ts_info": "avg:" + tsuid
         }
 
-        response = self.send(root_url=self.session.tsdb_url,
-                             verb=GenericClient.VERB.GET,
-                             template=TEMPLATES['direct_extract_by_tsuid'],
-                             uri_params=uri_params)
+        # Number of retry to perform in case of dynamic read/write issues (see below)
+        max_retry_count = 1
+        retry_count = 0
+        while retry_count < max_retry_count:
+            retry_count += 1
 
-        # Check if at least one entry is returned
-        try:
-            # Converts to numpy Arrays
-            dps = response.json[0]['dps']
-            array = np.array([[int(k), float(v)] for k, v in dps.items()], dtype=object)
+            response = self.send(root_url=self.session.tsdb_url,
+                                 verb=GenericClient.VERB.GET,
+                                 template=TEMPLATES['direct_extract_by_tsuid'],
+                                 uri_params=uri_params)
 
-            # Sort array by date
-            # The conversion JSON to python dict was performed automatically
-            # Because the python dict is not ordered by key, the sort operation is mandatory
-            array = array[array[:, 0].argsort()]
-        except IndexError:
-            array = np.array([])
-        except KeyError:
-            raise ValueError(response.json)
-        return array
+            # Check if at least one entry is returned
+            try:
+
+                # Check if data are returned
+                # No data may indicate the data are not yet flushed into database by the server (async-hbase)
+                # This may occur when data are read shortly after they have been put to database
+                if 'dps' not in response.json[0] or len(response.json[0]['dps']) == 0:
+                    # Wait 4 seconds before retrying
+                    time.sleep(4)
+                    continue
+
+                # Converts to numpy Arrays
+                dps = response.json[0]['dps']
+                array = np.array([[int(k), float(v)] for k, v in dps.items()], dtype=object)
+
+                # Sort array by date
+                # The conversion JSON to python dict was performed automatically
+                # Because the python dict is not ordered by key, the sort operation is mandatory
+                array = array[array[:, 0].argsort()]
+            except IndexError:
+                array = np.array([])
+            except KeyError:
+                raise ValueError(response.json)
+            return array
 
     def add_points(self, tsuid, data):
         """
@@ -350,25 +367,27 @@ class OpenTSDBClient(GenericClient):
 
         metric, tags = self._get_metric_tags_from_tsuid(tsuid=tsuid)
 
-        # Filling query parameters
-        timeout = 600
-        uri_params = {
-            "timeout": timeout
-        }
+        # Building body with points
+        json_data = []
+        for point in data:
+            json_data.append({
+                "metric": metric,
+                "timestamp": str(point[0]).zfill(13),
+                "value": point[1],
+                "tags": tags
+            })
 
-        with requests.Session() as session:
-            # Building body with points
-            json_data = []
-            for point in data:
-                json_data.append({
-                    "metric": metric,
-                    "timestamp": point[0],
-                    "value": point[1],
-                    "tags": tags
-                })
+        response = self.send(root_url=self.session.tsdb_url,
+                             verb=GenericClient.VERB.POST,
+                             template=TEMPLATES['add_points'],
+                             data=json.dumps(json_data))
 
-            session.post(self.session.tsdb_url + TEMPLATES['add_points'].format(**uri_params),
-                         data=data,
-                         timeout=timeout + 1)
+        if "success" in response.data and response.data["success"] != len(data):
+            self.session.log.debug(response.data)
+            raise IkatsServerError("Database wrote only %s points out of %s", response.data["success"], len(data),
+                                   response.data)
+
+        is_4xx(response, "Unexpected client error: {code}")
+        is_5xx(response, "Unexpected server error: {code}")
 
         return data[0][0], data[-1][0], len(data)
