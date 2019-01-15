@@ -50,7 +50,7 @@ class IkatsSession:
         self.port = port
         self.sc = sc
 
-        self.catalog_url = "/pybase/ikats/algo/catalogue"
+        self.catalog_url = "/python_api"
         self.engine_url = "/pybase/ikats/algo/execute"
         self.tdm_url = "/datamodel-api"
         self.tsdb_url = "/opentsdb"

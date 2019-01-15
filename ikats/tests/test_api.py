@@ -14,3 +14,11 @@ class TestApi(TestCase):
         api = IkatsAPI(host="http://localhost", port=80)
         ts_list = api.ts.list()
         self.assertLess(0, len(ts_list))
+
+    def test_op_list(self):
+        api = IkatsAPI(host="http://localhost", port=80)
+        op_list = api.op.list()
+        self.assertLess(0, len(op_list))
+
+        op = op_list[0]
+        op.fetch()

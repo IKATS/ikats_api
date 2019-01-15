@@ -20,16 +20,17 @@ def check_type(value, allowed_types, var_name="variable", raise_exception=True):
     if type(allowed_types) != list:
         allowed_types = [allowed_types]
 
-    for t in allowed_types:
-        if type(value) == t or (t is None and value is None):
-            break
-    else:
+    type_ok = True
+    vt = type(value)
+
+    if value is None and None not in [allowed_types]:
+        type_ok = False
+    elif vt not in allowed_types:
         if raise_exception:
-            vt = type(value)
             raise TypeError("Type of {var_name} shall belong to {allowed_types}, not {vt}".format(**locals()))
         else:
-            return False
-    return True
+            type_ok = False
+    return type_ok
 
 
 def check_is_fid_valid(fid, raise_exception=True):
@@ -131,5 +132,3 @@ def check_is_valid_ds_name(value, raise_exception=True):
         else:
             check_status = False
     return check_status
-
-

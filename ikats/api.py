@@ -15,14 +15,12 @@ limitations under the License.
 
 """
 from ikats.session_ import IkatsSession
+from ikats.manager.operator_mgr_ import IkatsOperatorMgr
 from ikats.manager.dataset_mgr import IkatsDatasetMgr
 from ikats.manager.metadata_mgr_ import IkatsMetadataMgr
 from ikats.manager.process_data_mgr_ import IkatsProcessDataMgr
 from ikats.manager.table_mgr_ import IkatsTableMgr
 from ikats.manager.timeseries_mgr_ import IkatsTimeseriesMgr
-from ikats.objects.dataset_ import Dataset
-from ikats.objects.metadata_ import Metadata
-from ikats.objects.timeseries_ import Timeseries
 
 
 class IkatsAPI:
@@ -42,6 +40,7 @@ class IkatsAPI:
         self.ts = IkatsTimeseriesMgr(api=self)
         self.md = IkatsMetadataMgr(api=self)
         self.ds = IkatsDatasetMgr(api=self)
+        self.op = IkatsOperatorMgr(api=self)
         self.pd = IkatsProcessDataMgr(api=self)
         self.table = IkatsTableMgr(api=self)
 
@@ -58,10 +57,3 @@ class IkatsAPI:
 
     def __repr__(self):
         return "IKATS API"
-
-    def metadata(self, *args, **kwargs):
-        """
-        Create a Dataset Object with api
-        :rtype: Metadata
-        """
-        return Metadata(api=self, *args, **kwargs)
