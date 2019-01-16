@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 from ikats import IkatsAPI
+from ikats.exceptions import IkatsNotFoundError
 
 
 class TestApi(TestCase):
@@ -22,3 +23,9 @@ class TestApi(TestCase):
 
         op = op_list[0]
         op.fetch()
+
+    def test_pid(self):
+        api = IkatsAPI(host="http://localhost", port=80)
+        with self.assertRaises(IkatsNotFoundError):
+            api.op.results(pid="unknown")
+

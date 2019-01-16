@@ -1,7 +1,6 @@
 from unittest import TestCase
 
 from ikats import IkatsAPI
-from ikats.exceptions import IkatsConflictError
 from ikats.objects.operator_ import InOutParam
 
 

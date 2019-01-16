@@ -9,7 +9,13 @@ class InOutParam:
     Details about the inputs/outputs/parameters of an operator
     """
 
-    def __init__(self, json_data=None):
+    def __init__(self, api, json_data=None):
+        """
+        constructor
+        :param api:
+        :param json_data:
+        """
+
         self.__desc = None
         self.__domain = None
         self.__label = None
@@ -17,6 +23,10 @@ class InOutParam:
         self.__order_index = None
         self.__dtype = None
         self.__default_value = None
+        self.__rid = None
+
+        self.__api = None
+        self.api = api
 
         if json_data is not None:
             check_type(value=json_data, allowed_types=dict, var_name="json_data", raise_exception=True)
@@ -28,6 +38,23 @@ class InOutParam:
             self.order_index = json_data.get("order_index", None)
             self.dtype = json_data.get("type", None)
             self.default_value = json_data.get("default_values", None)
+
+    @property
+    def api(self):
+        return self.__api
+
+    @api.setter
+    def api(self, value):
+        self.__api = value
+
+    @property
+    def rid(self):
+        return self.__rid
+
+    @rid.setter
+    def rid(self, value):
+        check_type(value=value, allowed_types=[int, str, None], var_name="rid", raise_exception=True)
+        self.__rid = value
 
     @property
     def desc(self):
@@ -92,6 +119,11 @@ class InOutParam:
     @default_value.setter
     def default_value(self, value):
         self.__default_value = value
+
+    def get(self):
+        if self.rid is None:
+            raise ValueError("Provide a RID first")
+        return self.api.op.result(rid=self.rid)
 
 
 class Operator(IkatsObject):
@@ -277,7 +309,8 @@ class RunOp(Operator):
         if self.pid is None:
             raise ValueError("Provide a PID first")
         results = self.api.op.results(pid=self.pid)
-        # TODO
+        for info, i in enumerate(results):
+            self.outputs[i].rid = info["id"]
 
     def __str__(self):
         return "Running Operator %s" % self.name

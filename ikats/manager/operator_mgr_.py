@@ -23,15 +23,15 @@ def merge_json_to_op(op, json):
 
     op.inputs = []
     for item in json.get("inputs", []):
-        op.inputs.append(InOutParam(json_data=item))
+        op.inputs.append(InOutParam(json_data=item, api=op.api))
 
     op.parameters = []
     for item in json.get("parameters", []):
-        op.parameters.append(InOutParam(json_data=item))
+        op.parameters.append(InOutParam(json_data=item, api=op.api))
 
     op.outputs = []
     for item in json.get("outputs", []):
-        op.outputs.append(InOutParam(json_data=item))
+        op.outputs.append(InOutParam(json_data=item, api=op.api))
 
 
 class IkatsOperatorMgr(IkatsGenericApiEndPoint):
@@ -97,7 +97,7 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :return: list of the results
         :rtype: list
         """
-        pass
+        return self.tdm_client.pid_results(pid=pid)
 
     def result(self, rid):
         """
@@ -109,4 +109,4 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :return: specific result (type depends on the output type)
         :rtype: object
         """
-        pass
+        return self.tdm_client.pid_result(rid=rid)

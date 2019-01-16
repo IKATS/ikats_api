@@ -48,7 +48,9 @@ TEMPLATES = {
     'search': '/ts/lookup/{metric}',
     'ts_match': '/metadata/tsmatch',
     'get_one_functional_identifier': '/metadata/funcId/{tsuid}',
-    'search_functional_identifier_list': '/metadata/funcId'
+    'search_functional_identifier_list': '/metadata/funcId',
+    'pid_read': '/processdata/{pid}',
+    'rid_read': '/processdata/id/download/{rid}'
 }
 
 
@@ -1101,3 +1103,27 @@ class TDMClient(GenericClient):
             else:
                 result = False
         return result
+
+    def pid_results(self, pid):
+
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
+                             verb=GenericClient.VERB.GET,
+                             template=TEMPLATES['pid_read'],
+                             uri_params={"pid": pid})
+
+        # See bugs #2780
+        # This is a workaround
+        if len(response.data) == 0:
+            raise IkatsNotFoundError("No RID found for PID:%s" % pid)
+
+        return response.data
+
+    def pid_result(self, rid):
+
+        response = self.send(root_url=self.session.tdm_url + self.root_url,
+                             verb=GenericClient.VERB.GET,
+                             template=TEMPLATES['rid_read'],
+                             uri_params={"rid": rid})
+
+        is_404(response=response, msg="RID not found :%s" % rid)
+        return response.data
