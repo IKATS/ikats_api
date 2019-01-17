@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +15,88 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-
+import mimetypes
 from enum import Enum
 
-from ikats.exceptions import IkatsInputError, IkatsNotFoundError, IkatsClientError, IkatsServerError
-from ikats.session_ import IkatsSession
-from ikats.client import build_json_files, close_files
+from ikats.exceptions import (IkatsClientError, IkatsInputError,
+                              IkatsNotFoundError, IkatsServerError)
 from ikats.lib import check_type
+from ikats.objects.session_ import IkatsSession
 
 
-class RestClientResponse(object):
+def close_files(json):
+    """
+    Closes the files opened with build_json_files method
+    :param json: item built using build_json_files method
+    :type json: dict or list
+    """
+
+    if isinstance(json, dict):
+        # One file to handle
+        json['file'].close()
+    elif isinstance(json, list):
+        # Multiple files
+        for i in json:
+            json[i][1][1].close()
+
+
+def build_json_files(files):
+    """
+    Build the json files format to provide when sending files in a request
+
+    :param files: file or list of files to use for building json format
+    :type files: str OR list
+
+    :returns: the json to pass to request object
+    :rtype: dict
+
+    Single file return format
+        | files = {'file': ('report.xls', open('report.xls', 'rb'), 'application/vnd.ms-excel', {'Expires': '0'})}
+
+    Multiple files return format
+        | files = [('images', ('foo.png', open('foo.png', 'rb'), 'image/png')),
+        |          ('images', ('bar.png', open('bar.png', 'rb'), 'image/png'))]
+
+
+    :raises TypeError: if file is not found
+    :raises ValueError: if MIME hasn't been found for the file
+    """
+
+    if isinstance(files, str):
+
+        # Only one file is provided
+        working_file = files
+
+        # Defines MIME type corresponding to file extension
+        mime = mimetypes.guess_type(working_file)[0]
+        if mime is None:
+            raise ValueError("MIME type not found for file %s" % working_file)
+
+        # Build results
+        # results = {'file': (f, open(f, 'rb'), mime, {'Expires': '0'})}
+        return {'file': open(working_file, 'rb')}
+
+    if isinstance(files, list):
+        # Multiple files are provided
+        results = []
+        for working_file in files:
+            # Defines MIME type corresponding to file extension
+            mime = mimetypes.guess_type(working_file)[0]
+            if mime is None:
+                raise ValueError("MIME type not found for file %f" % working_file)
+            # Build result
+            results.append(('file', (working_file, open(working_file, 'rb'), mime)))
+        return results
+
+    if files is None:
+        # No file is provided -> No treatment
+        return None
+
+    # Handling errors
+    raise TypeError("Files must be provided as str or list (got %s)" % type(files))
+
+
+class RestClientResponse:
     """
     New wrapper of the result returned from module requests: it is returned by _send() method
 
@@ -70,7 +143,7 @@ class RestClientResponse(object):
         Note that there is a lazy computing of self.__json value, calling self.__result.json()
         made only once.
 
-        :return: the effective json content deduced from self.__result. In case of error/empty body,
+        :returns: the effective json content deduced from self.__result. In case of error/empty body,
           RestClientResponse.DEFAULT_JSON_INIT is returned.
         """
         if self.__json is None:
@@ -90,7 +163,7 @@ class RestClientResponse(object):
     @property
     def data(self):
         """
-        :return: appropriate content according to the parsed content-type
+        :returns: appropriate content according to the parsed content-type
         :rtype: object, str, or bytes
 
         :raises TypeError: error when there is no content specifically determined by content_type
@@ -98,15 +171,14 @@ class RestClientResponse(object):
 
         if 'application/octet-stream' in self.content_type:
             return self.content
-        elif 'application/json' in self.content_type:
+        if 'application/json' in self.content_type:
             return self.json
-        elif 'text/plain' in self.content_type:
+        if 'text/plain' in self.content_type:
             return self.text
-        else:
-            raise TypeError("Failed to find appropriate content for content-type=%s", self.content_type)
+        raise TypeError("Failed to find appropriate content for content-type=%s" % self.content_type)
 
 
-class GenericClient(object):
+class GenericClient:
     """
     Generic class to communicate using REST API
     """
@@ -120,8 +192,8 @@ class GenericClient(object):
         """
         session contains necessary information to allow clients to connect to IKATS backend
 
-        :return: the IKATS session
-        : rtype: IkatsSession
+        :returns: the IKATS session
+        :rtype: IkatsSession
         """
         return self.__session
 
@@ -195,7 +267,7 @@ class GenericClient(object):
         :type timeout: int
         :type session: requests.session
 
-        :return: the response of the request
+        :returns: the response of the request
         :rtype: RestClientResponse
 
         :raises TypeError: if VERB is incorrect
@@ -224,37 +296,32 @@ class GenericClient(object):
         # Dispatch method
         try:
             if verb == GenericClient.VERB.POST:
-                result = session_to_use.post(url,
-                                             data=data,
+                result = session_to_use.post(url, data=data,
                                              json=json_data,
                                              files=json_file,
                                              params=q_params,
                                              timeout=timeout,
                                              headers=headers)
             elif verb == GenericClient.VERB.GET:
-                result = session_to_use.get(url,
-                                            params=q_params,
+                result = session_to_use.get(url, params=q_params,
                                             timeout=timeout,
                                             headers=headers)
             elif verb == GenericClient.VERB.PUT:
-                result = session_to_use.put(url,
-                                            params=q_params,
+                result = session_to_use.put(url, params=q_params,
                                             timeout=timeout,
                                             headers=headers)
             elif verb == GenericClient.VERB.DELETE:
-                result = session_to_use.delete(url,
-                                               params=q_params,
+                result = session_to_use.delete(url, params=q_params,
                                                timeout=timeout,
                                                headers=headers)
             else:
-                raise RuntimeError("Verb [%s] is unknown, shall be one defined by VERB Enumerate" % verb)
+                raise ValueError("Verb [%s] is unknown, shall be one defined by VERB Enumerate" % verb)
 
             # Format output encoding
             result.encoding = 'utf-8'
 
-        except Exception as exception:
-            self.session.log.error(exception)
-            raise
+        except Exception as ex:
+            raise IkatsServerError("IKATS not reachable", ex)
         finally:
             # Close potential opened files
             close_files(json_file)
@@ -323,7 +390,7 @@ def is_4xx(response, msg):
     :type response: RestClientResponse
     :type msg: str
     """
-    if str(response.status_code)[0] == '4':
+    if str(response.status_code).startswith('4'):
         if "{code}" in msg:
             msg = msg.format(**{"code": response.status_code})
         raise IkatsClientError(msg)
@@ -338,7 +405,7 @@ def is_5xx(response, msg):
     :param msg:
 
     """
-    if str(response.status_code)[0] == '5':
+    if str(response.status_code).startswith('5'):
         if "{code}" in msg:
             msg = msg.format(**{"code": response.status_code})
         raise IkatsServerError(msg)

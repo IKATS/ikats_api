@@ -1,55 +1,27 @@
-# noinspection PyMethodOverriding,PyAbstractClass
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
 
-from ikats.client.tdm_client import TDMClient, DTYPE as C_TYPE
-from ikats.lib import check_type
-from ikats.manager.generic_ import IkatsGenericApiEndPoint
-from ikats.objects.metadata_ import Metadata, DTYPE as O_TYPE
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
+   http://www.apache.org/licenses/LICENSE-2.0
 
-def _to_client_type(object_type):
-    """
-    Converts object DTYPE defined in Metadata object to the client DTYPE defined in TDM client
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
-    :param object_type: value to convert
-    :type object_type: O_TYPE
+"""
 
-    :return: the converted value
-    :rtype: C_TYPE
-    """
-
-    mapping_rule = {
-        O_TYPE.STRING: C_TYPE.string,
-        O_TYPE.COMPLEX: C_TYPE.complex,
-        O_TYPE.NUMBER: C_TYPE.number,
-        O_TYPE.DATE: C_TYPE.date,
-    }
-
-    if object_type not in mapping_rule:
-        raise ValueError("Can't convert object DTYPE to client type: %s", object_type)
-    return mapping_rule[object_type]
-
-
-def _to_object_type(client_type):
-    """
-    Converts client DTYPE defined in TDM client to the object DTYPE defined in Metadata object
-
-    :param client_type: value to convert
-    :type client_type: C_TYPE
-
-    :return: the converted value
-    :rtype: O_TYPE
-    """
-
-    mapping_rule = {
-        C_TYPE.string: O_TYPE.STRING,
-        C_TYPE.complex: O_TYPE.COMPLEX,
-        C_TYPE.number: O_TYPE.NUMBER,
-        C_TYPE.date: O_TYPE.DATE,
-    }
-
-    if client_type not in mapping_rule:
-        raise ValueError("Can't convert object Type to object type: %s", client_type)
-    return mapping_rule[client_type]
+from ikats.client.datamodel_client import DatamodelClient
+from ikats.client.datamodel_stub import DatamodelStub
+from ikats.exceptions import IkatsException
+from ikats.lib import check_type, MDType
+from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
+from ikats.objects.metadata_ import Metadata
 
 
 class IkatsMetadataMgr(IkatsGenericApiEndPoint):
@@ -59,44 +31,71 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client = TDMClient(session=self.api.session)
+        if self.api.emulate:
+            self.client = DatamodelStub(session=self.api.session)
+        else:
+            self.client = DatamodelClient(session=self.api.session)
 
-    def create(self, tsuid, name, value, dtype=O_TYPE.STRING, force_update=False):
+    def save(self, tsuid, name, value, dtype=MDType.STRING, raise_exception=True):
         """
-        Import a meta data into TemporalDataManager
+        Save a metadata into Datamodel
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
-        :param tsuid: Functional Identifier of the TS
-        :param name: Metadata name
-        :param value: Value of the metadata
-        :param dtype: data type of the meta data
-        :param force_update: True to create the meta if not exists (default: False)
+        :param tsuid: timeseries identifier (TSUID)
+        :param name: name of the metadata to save
+        :param value: Value of the metadata to save
+        :param dtype: data type of the metadata save
+        :param raise_exception: (optional) Indicates if Ikats exceptions shall be raised (True, default) or not (False)
 
         :type tsuid: str
         :type name: str
         :type value: str or number
-        :type dtype: O_TYPE
-        :type force_update: bool
+        :type dtype: DTYPE
+        :type raise_exception: bool
 
-        :return: execution status, True if import successful, False otherwise
+        :returns: the status of the action
         :rtype: bool
 
         :raises TypeError: if *tsuid* not a str
         :raises TypeError: if *name* not a str
-        :raises TypeError: if *value* not a str or a number
-        :raises TypeError: if *data_type* not a DTYPE
-        :raises TypeError: if *force_update* not a bool
+        :raises TypeError: if *value* not a str nor a number
+        :raises TypeError: if *dtype* not a MDType
 
         :raises ValueError: if *tsuid* is empty
         :raises ValueError: if *name* is empty
         :raises ValueError: if *value* is empty
+        :raises IkatsConflictError: if metadata couldn't be saved
         """
 
-        result = self.client.metadata_create(tsuid=tsuid, name=name, value=value,
-                                             data_type=_to_client_type(object_type=dtype),
-                                             force_update=force_update)
-        if not result:
-            self.api.log.error("Metadata '%s' couldn't be saved for TS %s", name, tsuid)
-        return result
+        try:
+            result = self.client.metadata_create(tsuid=tsuid, name=name, value=value,
+                                                 data_type=dtype,
+                                                 force_update=True)
+            return result
+        except IkatsException:
+            if raise_exception:
+                raise
+            return False
+
+    def delete(self, tsuid, name, raise_exception=True):
+        """
+        Delete a metadata associated to a TSUID
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
+
+        :param tsuid: tsuid associated to this metadata
+        :param name: Name of the metadata
+        :param raise_exception: (optional) Indicates if Ikats exceptions shall be raised (True, default) or not (False)
+
+        :type tsuid: str
+        :type name: str
+        :type raise_exception: bool
+
+        :returns: the status of the action
+        :rtype: bool
+
+        :raises IkatsNotFoundError: if metadata doesn't exist
+        """
+        return self.client.metadata_delete(tsuid=tsuid, name=name, raise_exception=raise_exception)
 
     def fetch(self, metadata):
         """
@@ -104,73 +103,26 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
         The returned dict has the following format:
         {
-          'md1':{'value':'value1', 'type': 'dtype'},
-          'md2':{'value':'value2', 'type': 'dtype'}
+          'md1':{'value':'value1', 'dtype': 'dtype', 'deleted': False},
+          'md2':{'value':'value2', 'dtype': 'dtype', 'deleted': False}
         }
 
         :param metadata: Metadata object containing a valid tsuid
         :type metadata: Metadata
 
-        :return: the object containing information about each metadata matching the TSUID.
+        :returns: the object containing information about each metadata matching the TSUID.
         :rtype: dict
+
+        :raises IkatsNotFoundError: if metadata doesn't exist
         """
 
         check_type(value=metadata, allowed_types=Metadata, raise_exception=True)
         result = self.client.metadata_get_typed(ts_list=[metadata.tsuid])[metadata.tsuid]
 
-        # Converts DTYPE
         for md in result:
-            result[md]["dtype"] = _to_object_type(C_TYPE[result[md]["dtype"]])
+            # Converts MDType
+            result[md]["dtype"] = result[md]["dtype"]
+            # Flag metadata as "not deleted"
+            result[md]["deleted"] = False
 
         return result
-
-    def update(self, tsuid, name, value, data_type=O_TYPE.STRING, force_create=False):
-        """
-        Import a meta data into TemporalDataManager
-
-        :param tsuid: TSUID of the TS
-        :param name: Metadata name
-        :param value: Value of the metadata
-        :param data_type: data type of the meta data (used only if force_create, no type change on existing meta data)
-        :param force_create: True to create the meta if not exists (default: False)
-
-        :type tsuid: str
-        :type name: str
-        :type value: str or number
-        :type data_type: DTYPE
-        :type force_create: bool
-
-        :return: execution status, True if import successful, False otherwise
-        :rtype: bool
-
-        :raises TypeError: if *tsuid* not a str
-        :raises TypeError: if *name* not a str
-        :raises TypeError: if *value* not a str or a number
-        :raises TypeError: if *force_create* not a bool
-
-        :raises ValueError: if *tsuid* is empty
-        :raises ValueError: if *name* is empty
-        :raises ValueError: if *value* is empty
-        """
-
-        return self.client.metadata_update(tsuid=tsuid, name=name, value=value,
-                                           data_type=_to_client_type(object_type=data_type),
-                                           force_create=force_create)
-
-    def delete(self, tsuid, name, raise_exception=True):
-        """
-        Delete a metadata associated to a TSUID
-        Returns True if everything is fine, False if an error happened
-
-        :param tsuid:
-        :param name: Name of the metadata
-        :param raise_exception: Set to True to trigger exception
-
-        :type tsuid: str
-        :type name: str
-        :type raise_exception: bool
-
-
-        :return: The action status
-        """
-        return self.client.metadata_delete(tsuid=tsuid, name=name, raise_exception=raise_exception)

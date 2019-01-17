@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,12 +16,9 @@ limitations under the License.
 
 """
 
-from enum import Enum
-
-from ikats.client import GenericClient
-from ikats.exceptions import *
-from ikats.lib import check_type, check_is_fid_valid, check_is_valid_ds_name
-from ikats.client.generic_client import check_http_code, is_404, is_4xx, is_5xx
+from ikats.client.generic_client import (GenericClient, check_http_code, is_4xx, is_5xx, is_404)
+from ikats.exceptions import (IkatsConflictError, IkatsException, IkatsInputError, IkatsNotFoundError, IkatsServerError)
+from ikats.lib import check_is_fid_valid, check_is_valid_ds_name, check_type, MDType
 
 # List of templates used to build URL.
 #
@@ -50,90 +48,78 @@ TEMPLATES = {
     'get_one_functional_identifier': '/metadata/funcId/{tsuid}',
     'search_functional_identifier_list': '/metadata/funcId',
     'pid_read': '/processdata/{pid}',
-    'rid_read': '/processdata/id/download/{rid}'
+    'rid_read': '/processdata/id/download/{rid}',
+    'rid_add': '/processdata?name={name}&processId={process_id}',
+    'rid_delete': '/processdata/{rid}'
 }
 
 
-class DTYPE(Enum):
-    """
-    Enum used for Data types of Meta data
-    """
-    string = "string"
-    date = "date"
-    number = "number"
-    complex = "complex"
-
-
-class TDMClient(GenericClient):
+class DatamodelClient(GenericClient):
     """
     Temporal Data Manager api used to connect to JAVA Ikats API
     """
 
     def __init__(self, *args, **kwargs):
-        super(TDMClient, self).__init__(*args, **kwargs)
+        super(DatamodelClient, self).__init__(*args, **kwargs)
         self.root_url = "/TemporalDataManagerWebApp/webapi"
 
     def get_ts_list(self):
         """
-        Get the list of all TSUID in database
+        Get the list of all TSUID from database
 
-        :return: the list of TSUID with their associated metrics
+        :returns: the list of TSUID with their fid
         :rtype: list
         """
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_ts_list'])
 
         if response.status_code == 200:
             return response.json
-        elif response.status_code == 404:
+        if response.status_code == 404:
             return []
-        else:
-            raise ValueError("No TS found in database")
+        raise ValueError("No TS found in database")
 
     def dataset_create(self, name, description, ts):
         """
-        Create a new data set composed of the *tsuid_list*
+        Create a new dataset composed of the *tsuid_list*
 
         Corresponding web app resource operation: **importDataSet**
 
-        :param name: name of the data set
+        :param name: name of the dataset
         :param description: short functional description about the content
-        :param ts: list of tsuid composing the data set
+        :param ts: list of tsuid composing the dataset
 
         :type name: str
         :type description: str
-        :type ts: list OR str
+        :type ts: list
 
-        :return: execution status_code (True if success, False otherwise)
+        :returns: execution status_code (True if success, False otherwise)
         :rtype: bool
 
         :raises TypeError: if *tsuid_list* is not a list
+        :raises IkatsConflictError: if *name* already exists in database
         """
 
-        if type(ts) is not list:
-            self.session.log.error('ts shall be a list')
-            raise TypeError('ts shall be a list')
+        # Inputs check
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+        check_type(value=description, allowed_types=str, var_name="description", raise_exception=True)
+        check_type(value=ts, allowed_types=list, var_name="ts", raise_exception=True)
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'data_set': name,
-        }
-
-        data = {
-            'name': name,
-            'description': description,
-            'tsuidList': ','.join(ts),
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['dataset_create'],
-                             uri_params=uri_params,
-                             data=data)
+                             uri_params={
+                                 'data_set': name,
+                             },
+                             data={
+                                 'name': name,
+                                 'description': description,
+                                 'tsuidList': ','.join(ts),
+                             })
 
         if response.status_code == 409:
-            raise IkatsConflictError("Dataset %s already exist in database" % name)
+            raise IkatsConflictError("Dataset %s already exists in database" % name)
 
     def dataset_read(self, name):
         """
@@ -141,13 +127,13 @@ class TDMClient(GenericClient):
 
         Corresponding web app resource operation: **getDataSet**
 
-        :param name: name of the data set to request TS list from
+        :param name: name of the dataset to request TS list from
         :type name: str
 
         :return:
            information about ts_list and description
            * *ts_list* is the list of TS matching the data_set
-           * *description* is the description sentence of the data set
+           * *description* is the description sentence of the dataset
         :rtype: dict
 
         :raises TypeError: if name is not a str
@@ -162,7 +148,7 @@ class TDMClient(GenericClient):
             'description': None
         }
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['dataset_read'],
                              uri_params={
@@ -179,6 +165,7 @@ class TDMClient(GenericClient):
                 ret['description'] = response.json['description']
 
             return ret
+        raise SystemError("Something wrong happened")
 
     def dataset_delete(self, name, deep=False):
         """
@@ -186,17 +173,17 @@ class TDMClient(GenericClient):
 
         Corresponding web app resource operation: **removeDataSet**
 
-        :param name: name of the data set to delete
+        :param name: name of the dataset to delete
         :type name: str
 
         :param deep: true to deeply remove dataset (TSUID and metadata erased)
         :type deep: boolean
 
-        :return: True if operation is a success, False if error occurred
-        :rtype: bool
+        :returns: the response body
+        :rtype: str
 
         .. note::
-           Removing an unknown data set results in a successful operation (server constraint)
+           Removing an unknown dataset results in a successful operation (server constraint)
            The only possible errors may come from server (HTTP status_code code 5xx)
 
         :raises TypeError: if *name* is not a str
@@ -211,7 +198,7 @@ class TDMClient(GenericClient):
         template = 'dataset_remove'
         if deep:
             template = 'dataset_deep_remove'
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES[template],
                              uri_params={
@@ -220,17 +207,17 @@ class TDMClient(GenericClient):
 
         if response.status_code == 404:
             raise IkatsNotFoundError("Dataset %s not found in database" % name)
-        return response
+        return response.text
 
     def dataset_list(self):
         """
         Get the list of all dataset and their corresponding description
 
-        :return: dataset information :[{'name':name,'description':description}]
+        :returns: dataset information :[{'name':name,'description':description}]
         :rtype: list of dict
         """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_data_set_list'])
 
@@ -247,7 +234,7 @@ class TDMClient(GenericClient):
 
     def import_fid(self, tsuid, fid):
         """
-        Import a functional ID into TemporalDataManager
+        Import a functional ID into database
 
         :param tsuid: TSUID identifying the TS
         :param fid: Functional identifier
@@ -270,16 +257,14 @@ class TDMClient(GenericClient):
         if tsuid == "":
             raise ValueError("tsuid must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid,
-            'fid': fid
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['import_fid'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid,
+                                 'fid': fid
+                             }
+                             )
 
         # In case of success, web app returns 2XX
         if response.status_code == 200:
@@ -304,36 +289,26 @@ class TDMClient(GenericClient):
         """
 
         # Checks inputs
-        if type(tsuid) is not str:
-            self.session.log.error("tsuid must be a string (got %s)", type(tsuid))
-            raise TypeError("tsuid must be a string (got %s)" % type(tsuid))
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
 
         if tsuid == "":
             self.session.log.error("tsuid must not be empty")
             raise ValueError("tsuid must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_fid'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid
+                             })
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
-
             if response.json != '{}':
                 fid = response.json['funcId']
-                self.session.log.debug("TSUID:%s - FID obtained %s", tsuid, fid)
                 return fid
-            else:
-                self.session.log.warning("No FID for TSUID [%s]", tsuid)
-                raise IndexError("No FID for TSUID [%s]" % tsuid)
-        else:
-            raise ValueError("No FID for TSUID [%s]" % tsuid)
+            raise IndexError("No FID for TSUID [%s]" % tsuid)
+        raise ValueError("No FID for TSUID [%s]" % tsuid)
 
     def delete_fid(self, tsuid):
         """
@@ -349,23 +324,18 @@ class TDMClient(GenericClient):
         """
 
         # Checks inputs
-        if type(tsuid) is not str:
-            self.session.log.error("tsuid must be a string (got %s)", type(tsuid))
-            raise TypeError("tsuid must be a string (got %s)" % type(tsuid))
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
 
         if tsuid == "":
             self.session.log.error("tsuid must not be empty")
             raise ValueError("tsuid must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['delete_fid'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid
+                             })
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
@@ -375,25 +345,25 @@ class TDMClient(GenericClient):
                                      response.status_code)
             raise ValueError
 
-    def metadata_create(self, tsuid, name, value, data_type=DTYPE.string, force_update=False):
+    def metadata_create(self, tsuid, name, value, data_type=MDType.STRING, force_update=False):
         """
-        Import a meta data into TemporalDataManager
+        Import a metadata into database
 
         Corresponding web app resource operation: **importMetaData**
 
         :param tsuid: Functional Identifier of the TS
         :param name: Metadata name
         :param value: Value of the metadata
-        :param data_type: data type of the meta data
+        :param data_type: data type of the metadata
         :param force_update: True to create the meta if not exists (default: False)
 
         :type tsuid: str
         :type name: str
         :type value: str or number
-        :type data_type: DTYPE
+        :type data_type: MDType
         :type force_update: bool
 
-        :return: execution status_code, True if import successful, False otherwise
+        :returns: execution status_code, True if import successful, False otherwise
         :rtype: bool
 
         :raises TypeError: if *tsuid* not a str
@@ -408,22 +378,11 @@ class TDMClient(GenericClient):
         """
 
         # Checks inputs
-        if type(tsuid) is not str:
-            self.session.log.error("tsuid must be a string (got %s)", type(tsuid))
-            raise TypeError("tsuid must be a string (got %s)" % type(tsuid))
-        if type(name) is not str:
-            self.session.log.error("name must be a string (got %s)", type(name))
-            raise TypeError("name must be a string (got %s)" % type(name))
-        if type(value) not in [str, int, float]:
-            self.session.log.error("value must be a string or a number (got %s)", type(value))
-            raise TypeError("value must be a string or a number (got %s)" % type(value))
-        if type(data_type) is not DTYPE:
-            self.session.log.error("data_type must be a DTYPE (got %s)", type(data_type))
-            raise TypeError("data_type must be a DTYPE (got %s)" % type(data_type))
-
-        if type(force_update) is not bool:
-            self.session.log.error("force_update must be a bool (got %s)", type(force_update))
-            raise TypeError("force_update must be a bool (got %s)" % type(force_update))
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+        check_type(value=value, allowed_types=[str, int, float], var_name="value", raise_exception=True)
+        check_type(value=data_type, allowed_types=MDType, var_name="data_type", raise_exception=True)
+        check_type(value=force_update, allowed_types=bool, var_name="force_update", raise_exception=True)
 
         if tsuid == "":
             self.session.log.error("tsuid must not be empty")
@@ -435,56 +394,48 @@ class TDMClient(GenericClient):
             self.session.log.error("value must not be empty")
             raise ValueError("value must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid,
-            'name': name,
-            'value': value
-        }
-
-        # Data type of the meta data
-        q_params = {'dtype': data_type.value}
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['import_meta_data'],
-                             uri_params=uri_params,
-                             q_params=q_params)
+                             uri_params={
+                                 'tsuid': tsuid,
+                                 'name': name,
+                                 'value': value
+                             },
+                             q_params={
+                                 'dtype': data_type.value
+                             })
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
             return True
-        elif response.status_code == 409:
+        if response.status_code == 409:
             if force_update:
                 # Error occurred (can't create a metadata that already exists - conflict)
                 # Try to update it because it is wanted
                 return self.metadata_update(tsuid=tsuid, name=name, value=value, force_create=False)
-            else:
-                self.session.log.warning("TSUID:%s - MetaData already exists (not updated) %s=%s", tsuid, name, value)
-                return False
-        self.session.log.warning("TSUID [%s] - MetaData not created %s=%s. Received status_code:%s", tsuid, name, value,
-                                 response.status_code)
+            raise IkatsConflictError("Can't set metadata %s to %s (for tsuid %s)" % (name, value, tsuid))
         return False
 
-    def metadata_update(self, tsuid, name, value, data_type=DTYPE.string, force_create=False):
+    def metadata_update(self, tsuid, name, value, data_type=MDType.STRING, force_create=False):
         """
-        Import a meta data into TemporalDataManager
+        Import a metadata into database
 
         Corresponding web app resource operation: **importMetaData**
 
         :param tsuid: Functional Identifier of the TS
         :param name: Metadata name
         :param value: Value of the metadata
-        :param data_type: data type of the meta data (used only if force_create, no type change on existing meta data)
+        :param data_type: data type of the metadata (used only if force_create, no type change on existing metadata)
         :param force_create: True to create the meta if not exists (default: False)
 
         :type tsuid: str
         :type name: str
         :type value: str or number
-        :type data_type: DTYPE
+        :type data_type: MDType
         :type force_create: bool
 
-        :return: execution status_code, True if import successful, False otherwise
+        :returns: execution status_code, True if import successful, False otherwise
         :rtype: bool
 
         :raises TypeError: if *tsuid* not a str
@@ -498,19 +449,10 @@ class TDMClient(GenericClient):
         """
 
         # Checks inputs
-        if type(tsuid) is not str:
-            self.session.log.error("tsuid must be a string (got %s)", type(tsuid))
-            raise TypeError("tsuid must be a string (got %s)" % type(tsuid))
-        if type(name) is not str:
-            self.session.log.error("name must be a string (got %s)", type(name))
-            raise TypeError("name must be a string (got %s)" % type(name))
-        if type(value) not in [str, int, float]:
-            self.session.log.error("value must be a string or a number (got %s)", type(value))
-            raise TypeError("value must be a string or a number (got %s)" % type(value))
-        if type(force_create) is not bool:
-            self.session.log.error("force_create must be a bool (got %s)", type(force_create))
-            raise TypeError("force_create must be a bool (got %s)" % type(force_create))
-
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
+        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+        check_type(value=value, allowed_types=[str, int, float], var_name="value", raise_exception=True)
+        check_type(value=force_create, allowed_types=bool, var_name="force_create", raise_exception=True)
         if tsuid == "":
             self.session.log.error("tsuid must not be empty")
             raise ValueError("tsuid must not be empty")
@@ -521,30 +463,26 @@ class TDMClient(GenericClient):
             self.session.log.error("value must not be empty")
             raise ValueError("value must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid,
-            'name': name,
-            'value': value,
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.PUT,
                              template=TEMPLATES['update_meta_data'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid,
+                                 'name': name,
+                                 'value': value,
+                             })
 
         # in case of success, web app returns 2XX
         if response.status_code == 200:
             return True
-        elif response.status_code == 404:
+        if response.status_code == 404:
             if force_create:
                 # Error occurred (can't update a metadata that doesn't exists)
                 # Try to create it because it is wanted
                 return self.metadata_create(tsuid=tsuid, name=name, value=value, data_type=data_type,
                                             force_update=False)
-            else:
-                self.session.log.warning("TSUID:%s - MetaData doesn't exists and not Created %s=%s", tsuid, name, value)
-                return False
+            self.session.log.warning("TSUID:%s - MetaData doesn't exists and not Created %s=%s", tsuid, name, value)
+            return False
         self.session.log.warning(
             "TSUID [%s] - MetaData not updated %s=%s. Received status_code:%s", tsuid, name, value,
             response.status_code)
@@ -558,11 +496,13 @@ class TDMClient(GenericClient):
 
         :param tsuid: TSUID of the Timeseries where is bound the metadata
         :param name: Metadata name
+        :param raise_exception: (optional) Indicates if Ikats exceptions shall be raised (True, default) or not (False)
 
         :type tsuid: str
         :type name: str
+        :type raise_exception: bool
 
-        :return: execution status_code, True if import successful, False otherwise
+        :returns: the status of the action
         :rtype: bool
 
         :raises TypeError: if *tsuid* not a str
@@ -570,6 +510,7 @@ class TDMClient(GenericClient):
 
         :raises ValueError: if *tsuid* is empty
         :raises ValueError: if *name* is empty
+        :raises IkatsNotFoundError: if metadata doesn't exist
         """
 
         # Checks inputs
@@ -583,20 +524,22 @@ class TDMClient(GenericClient):
             self.session.log.error("name must not be empty")
             raise ValueError("name must not be empty")
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid,
-            'name': name,
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['metadata_delete'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid,
+                                 'name': name,
+                             })
 
-        is_404(response, "Metadata '%s' not found for TS '%s'" % (name, tsuid))
-        is_4xx(response, msg="Unexpected client error : {code}")
-        is_5xx(response, msg="Unexpected server error : {code}")
+        try:
+            is_404(response, "Metadata '%s' not found for TS '%s'" % (name, tsuid))
+            is_4xx(response, msg="Unexpected client error : {code}")
+            is_5xx(response, msg="Unexpected server error : {code}")
+        except IkatsException:
+            if raise_exception:
+                raise
+            return False
 
         return True
 
@@ -613,6 +556,9 @@ class TDMClient(GenericClient):
                * ['TS1','TS2','TS3','TS4']
                * ['TS1']
 
+        :param ts_list: list of TSUID identifier
+        :type ts_list: str or list
+
         :returns: metadata for each TS
         :rtype: dict (key is TS identifier, value is list of metadata)
             | {
@@ -620,19 +566,14 @@ class TDMClient(GenericClient):
             |     'TS2': {'param1':'value1', 'param2':'value2'}
             | }
 
-        :param ts_list: list of TS identifier
-        :type ts_list: str or list
-
         :raises TypeError: if *ts_list* is neither a str nor a list
         """
 
         # Checks inputs
-        if type(ts_list) is str:
+        check_type(value=ts_list, allowed_types=[list, str], var_name="ts_list", raise_exception=True)
+        if isinstance(ts_list, str):
             # Hack to convert string to list (to homogenize treatment)
             ts_list = ts_list.split(',')
-        if type(ts_list) is not list:
-            self.session.log.error("ts_list must be a list")
-            raise TypeError("ts_list must be a list")
 
         output_dict = {}
 
@@ -644,13 +585,10 @@ class TDMClient(GenericClient):
         for i in range(0, len(ts_list), chunk_size):
             working_ts_list = ts_list[i:i + chunk_size]
 
-            # Filling query parameters
-            q_params = {'tsuid': ','.join(working_ts_list)}
-
-            response = self.send(root_url=self.session.tdm_url + self.root_url,
+            response = self.send(root_url=self.session.dm_url + self.root_url,
                                  verb=GenericClient.VERB.GET,
                                  template=TEMPLATES['lookup_meta_data'],
-                                 q_params=q_params)
+                                 q_params={'tsuid': ','.join(working_ts_list)})
 
             if response.status_code == 414:
                 # The size of the request is too big
@@ -702,6 +640,9 @@ class TDMClient(GenericClient):
                * ['TS1','TS2','TS3','TS4']
                * ['TS1']
 
+        :param ts_list: list of TS identifier
+        :type ts_list: str or list
+
         :returns: metadata for each TS
         :rtype: dict (key is TS identifier, value is list of metadata with its associated data type)
             | {
@@ -709,19 +650,14 @@ class TDMClient(GenericClient):
             |     'TS2': {'param1':{'value':'value1', 'dtype': 'dtype'}, 'param2':{'value':'value2', 'dtype': 'dtype'}}
             | }
 
-        :param ts_list: list of TS identifier
-        :type ts_list: str or list
-
         :raises TypeError: if *ts_list* is neither a str nor a list
         """
 
         # Checks inputs
-        if type(ts_list) is str:
+        check_type(value=ts_list, allowed_types=[list, str], var_name="ts_list", raise_exception=True)
+        if isinstance(ts_list, str):
             # Hack to convert string to list (to homogenize treatment)
             ts_list = ts_list.split(',')
-        if type(ts_list) is not list:
-            self.session.log.error("ts_list must be a list")
-            raise TypeError("ts_list must be a list")
 
         output_dict = {}
 
@@ -733,13 +669,10 @@ class TDMClient(GenericClient):
         for i in range(0, len(ts_list), chunk_size):
             working_ts_list = ts_list[i:i + chunk_size]
 
-            # Filling query parameters
-            q_params = {'tsuid': ','.join(working_ts_list)}
-
-            response = self.send(root_url=self.session.tdm_url + self.root_url,
+            response = self.send(root_url=self.session.dm_url + self.root_url,
                                  verb=GenericClient.VERB.GET,
                                  template=TEMPLATES['lookup_meta_data'],
-                                 q_params=q_params)
+                                 q_params={'tsuid': ','.join(working_ts_list)})
 
             if response.status_code == 414:
                 # The size of the request is too big
@@ -777,13 +710,16 @@ class TDMClient(GenericClient):
                 if content['tsuid'] not in output_dict:
                     output_dict[content['tsuid']] = {}
 
-                output_dict[content['tsuid']][content['name']] = {'value': content['value'], 'dtype': content['dtype']}
+                output_dict[content['tsuid']][content['name']] = {
+                    'value': content['value'],
+                    'dtype': MDType(content['dtype'])
+                }
 
         return output_dict
 
     def get_ts_from_metadata(self, constraint=None):
         """
-        From a meta data constraint provided in parameter, the method get a TS list matching these constraints
+        From a metadata constraint provided in parameter, the method get a TS list matching these constraints
 
         Corresponding web app resource operation: **TSMatch**
 
@@ -792,7 +728,7 @@ class TDMClient(GenericClient):
             |     frequency: [1, 2],
             |     flight_phase: 8
             | }
-        will find the TS having the following meta data:
+        will find the TS having the following metadata:
             | (frequency == 1 OR frequency == 2)
             | AND
             | flight_phase == 8
@@ -810,11 +746,9 @@ class TDMClient(GenericClient):
         # Checks inputs
         if constraint is None:
             constraint = {}
-        if type(constraint) is not dict:
-            self.session.log.error("constraint must be a dict")
-            raise TypeError("constraint must be a dict")
+        check_type(value=constraint, allowed_types=dict, var_name="constraint", raise_exception=True)
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['ts_match'],
                              q_params=constraint)
@@ -830,7 +764,7 @@ class TDMClient(GenericClient):
 
         :param tsuid: one tsuid value
         :type tsuid: str
-        :return: retrieved functional identifier resource
+        :returns: retrieved functional identifier resource
         :rtype: dict having following keys defined:
           - 'tsuid'
           - and 'funcId'
@@ -839,10 +773,9 @@ class TDMClient(GenericClient):
             - ValueError: mismatched result: http status_code 404:  not found
             - ServerError: http status_code for server errors: 500 <= status_code < 600
         """
-        if not isinstance(tsuid, str):
-            raise TypeError("tsuid type must be str")
+        check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['get_one_functional_identifier'],
                              uri_params={'tsuid': tsuid},
@@ -860,7 +793,7 @@ class TDMClient(GenericClient):
         :param fid: one func_id value
         :type fid: str
 
-        :return: retrieved tsuid value
+        :returns: retrieved tsuid value
         :rtype: str
 
         :raises TypeError: if unexpected fid parameter
@@ -890,7 +823,7 @@ class TDMClient(GenericClient):
           ex: 'tsuids' or 'funcIds'
         :param criteria_list: non empty list of possible values for the criterion type
         :type criteria_list: list of str
-        :return: matching list of functional identifier resources: dict having following keys defined:
+        :returns: matching list of functional identifier resources: dict having following keys defined:
             - 'tsuid',
             - and 'funcId'
         :rtype: list of dict
@@ -899,15 +832,13 @@ class TDMClient(GenericClient):
           - ValueError: mismatched result: http status_code 404:  not found
           - ServerError: http status_code for server errors: 500 <= status_code < 600
         """
-        if not isinstance(criterion_type, str):
-            raise TypeError("criterion_type type must be str")
-        if not isinstance(criteria_list, list):
-            raise TypeError("criteria_list type must be list")
+        check_type(value=criterion_type, allowed_types=str, var_name="criterion_type", raise_exception=True)
+        check_type(value=criteria_list, allowed_types=list, var_name="criteria_list", raise_exception=True)
 
         my_filter = dict()
         my_filter[criterion_type] = criteria_list
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['search_functional_identifier_list'],
                              data=my_filter,
@@ -923,13 +854,13 @@ class TDMClient(GenericClient):
         :param data: data to store
         :type data: dict
 
-        :return: the name of the created table
+        :returns: the name of the created table
 
         :raises IkatsInputError: for any error present in the inputs
         :raises IkatsException: for any other error during the request
         """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.POST,
                              template=TEMPLATES['create_table'],
                              json_data=data,
@@ -962,13 +893,13 @@ class TDMClient(GenericClient):
         :type name: str or None
         :type strict: bool
 
-        :return: the list of tables matching the requirements
+        :returns: the list of tables matching the requirements
         :rtype: list
 
         :raises IkatsInputError: for any error present in the inputs
         :raises IkatsException: for any other error during the request
         """
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['list_tables'],
                              uri_params={'name': name, 'strict': strict},
@@ -977,7 +908,7 @@ class TDMClient(GenericClient):
 
         if response.status_code == 404:
             return response.json
-        elif response.status_code >= 500:
+        if response.status_code >= 500:
             err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
                                                                             response.url,
                                                                             response.json)
@@ -992,14 +923,14 @@ class TDMClient(GenericClient):
         :param name: the name of the raw table to get data from
         :type name: str
 
-        :return: the content data stored.
+        :returns: the content data stored.
         :rtype: bytes or str or object
 
-        :raise IkatsNotFoundError: no resource identified by ID
-        :raise IkatsException: any other error
+        :raises IkatsNotFoundError: no resource identified by ID
+        :raises IkatsException: any other error
         """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['read_table'],
                              uri_params={'name': name},
@@ -1010,7 +941,7 @@ class TDMClient(GenericClient):
             raise IkatsInputError("Wrong input: [%s]" % name)
         if response.status_code == 404:
             raise IkatsNotFoundError("Table %s not found" % name)
-        elif response.status_code >= 500:
+        if response.status_code >= 500:
             err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
                                                                             response.url,
                                                                             response.json)
@@ -1028,7 +959,7 @@ class TDMClient(GenericClient):
 
         """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['delete_table'],
                              uri_params={'name': name})
@@ -1046,7 +977,7 @@ class TDMClient(GenericClient):
 
     def ts_delete(self, tsuid, raise_exception=True):
         """
-        Remove timeseries from base
+        Remove timeseries from database
         return bool status except if raise_exception is set to True.
         In this case, return True or raise the corresponding exception
 
@@ -1059,7 +990,7 @@ class TDMClient(GenericClient):
         :type tsuid: str
         :type raise_exception: bool
 
-        :return: the action status (True if deleted, False otherwise)
+        :returns: the action status (True if deleted, False otherwise)
         :rtype: bool
 
 
@@ -1072,15 +1003,12 @@ class TDMClient(GenericClient):
         # Checks inputs
         check_type(value=tsuid, allowed_types=str, var_name="tsuid", raise_exception=True)
 
-        # List of items to be replaced by in the template
-        uri_params = {
-            'tsuid': tsuid
-        }
-
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
                              template=TEMPLATES['remove_ts'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 'tsuid': tsuid
+                             })
 
         if response.status_code == 204:
             # Timeseries has been successfully deleted
@@ -1089,41 +1017,121 @@ class TDMClient(GenericClient):
             # Timeseries not found in database
             if raise_exception:
                 raise IkatsNotFoundError("Timeseries %s not found in database" % tsuid)
-            else:
-                result = False
+            result = False
         elif response.status_code == 409:
             # Timeseries linked to existing dataset
             if raise_exception:
                 raise IkatsConflictError("%s belongs to -at least- one dataset" % tsuid)
-            else:
-                result = False
+            result = False
         else:
             if raise_exception:
                 raise SystemError("An unhandled error occurred")
-            else:
-                result = False
+            result = False
         return result
 
     def pid_results(self, pid):
+        """
+        Get a list of the results (RID) associated to PID
+        :param pid: process ID to get
+        :return: the result
+        """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['pid_read'],
                              uri_params={"pid": pid})
 
         # See bugs #2780
         # This is a workaround
-        if len(response.data) == 0:
+        if not response.data:
             raise IkatsNotFoundError("No RID found for PID:%s" % pid)
 
         return response.data
 
-    def pid_result(self, rid):
+    def rid_get(self, rid):
+        """
+        Get a specific result
+        :param rid: result ID to get
+        :return: the result
+        """
 
-        response = self.send(root_url=self.session.tdm_url + self.root_url,
+        response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['rid_read'],
                              uri_params={"rid": rid})
 
         is_404(response=response, msg="RID not found :%s" % rid)
         return response.data
+
+    def rid_create(self, data, pid, name=None):
+        """
+        Push new data to be considered as a result of the run identified by *pid*
+
+        :param pid: process id to store information to
+        :param data: data to store
+        :param name: (option) label of the data
+
+        :type pid: str or int
+        :type data: object
+        :type name: str or None
+
+        :return: the RID of created result
+        :rtype: int
+        """
+
+        response = self.send(root_url=self.session.dm_url + self.root_url,
+                             verb=GenericClient.VERB.POST,
+                             template=TEMPLATES["rid_add"],
+                             data=data,
+                             uri_params={
+                                 'process_id': pid,
+                                 'name': name,
+                             })
+        is_4xx(response, "Unexpected client error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
+
+        try:
+            rid = int(response.text)
+            return rid
+        except ValueError:
+            raise IkatsException("response couldn't be parsed correctly %s" % response)
+
+    def rid_delete(self, rid, raise_exception=True):
+        """
+        Delete a metadata
+
+        Corresponding web app resource operation: **removeMetaData**
+
+        :param rid: Result ID of the data to delete
+        :param raise_exception: (optional) Indicates if Ikats exceptions shall be raised (True, default) or not (False)
+
+        :type rid: str or int
+        :type raise_exception: bool
+
+        :returns: the status of the action
+        :rtype: bool
+
+        :raises TypeError: if *rid* not a str nor int
+
+        :raises IkatsNotFoundError: if *rid* doesn't exist
+        """
+
+        # Checks inputs
+        check_type(value=rid, allowed_types=[str, int], var_name="rid", raise_exception=True)
+
+        response = self.send(root_url=self.session.dm_url + self.root_url,
+                             verb=GenericClient.VERB.DELETE,
+                             template=TEMPLATES['rid_delete'],
+                             uri_params={
+                                 'rid': rid
+                             })
+
+        try:
+            is_404(response, "RID %s not found" % rid)
+            is_4xx(response, msg="Unexpected client error : {code}")
+            is_5xx(response, msg="Unexpected server error : {code}")
+        except IkatsException:
+            if raise_exception:
+                raise
+            return False
+        return True

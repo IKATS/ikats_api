@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,16 +16,14 @@ limitations under the License.
 
 """
 
-from ikats.client import GenericClient
-from ikats.exceptions import *
-from ikats.lib import check_type, check_is_fid_valid, check_is_valid_ds_name
-from ikats.client.generic_client import check_http_code, is_404, is_4xx, is_5xx
-
+from ikats.client.generic_client import GenericClient, is_4xx, is_5xx, is_404
 # List of templates used to build URL.
 #
 # * Key corresponds to the web app method to use
 # * Value contains
 #    * the pattern of the url to connect to
+from ikats.exceptions import IkatsException
+
 TEMPLATES = {
     'implem_list': '/implementations',
     'implem': '/implementations/{name}'
@@ -42,9 +41,9 @@ class CatalogClient(GenericClient):
 
     def get_implementation_list(self):
         """
-        Get the list of all implementations in database
+        Get the list of all implementations from database
 
-        :return: the list of implementations
+        :returns: the list of implementations
         :rtype: list
         """
         response = self.send(root_url=self.session.catalog_url + self.root_url,
@@ -53,16 +52,17 @@ class CatalogClient(GenericClient):
 
         if response.status_code == 200:
             return response.json
-        elif response.status_code == 404:
+        if response.status_code == 404:
             return []
-        else:
-            raise ValueError("No implementations found in database")
+        is_4xx(response, "Unexpected client error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
+        return []
 
     def get_implementation(self, name):
         """
-        Get the implementations matching the name in database
+        Get the implementations matching the name from database
 
-        :return: the dict of implementation
+        :returns: the dict of implementation
         :rtype: dict
         """
         response = self.send(root_url=self.session.catalog_url + self.root_url,
@@ -77,4 +77,5 @@ class CatalogClient(GenericClient):
 
         is_404(response, "No implementation found matching " + name)
         is_4xx(response, "Unexpected client error : {code}")
-        is_4xx(response, "Unexpected server error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
+        raise IkatsException("Something wrong happened")

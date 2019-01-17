@@ -1,3 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 import json
 
 from ikats.lib import check_type
@@ -41,6 +59,10 @@ class InOutParam:
 
     @property
     def api(self):
+        """
+        IkatsAPI
+        :rtype: IkatsAPI
+        """
         return self.__api
 
     @api.setter
@@ -49,6 +71,10 @@ class InOutParam:
 
     @property
     def rid(self):
+        """
+        Result ID
+        :rtype: int or str
+        """
         return self.__rid
 
     @rid.setter
@@ -58,6 +84,10 @@ class InOutParam:
 
     @property
     def desc(self):
+        """
+        Input/Parameter/Output description
+        :rtype: str
+        """
         return self.__desc
 
     @desc.setter
@@ -67,17 +97,25 @@ class InOutParam:
 
     @property
     def domain(self):
+        """
+        Domain of values (json list as str). Used for discrete list
+        :rtype: str
+        """
         return self.__domain
 
     @domain.setter
     def domain(self, value):
-        if type(value) == str:
+        if isinstance(value, str):
             value = json.loads(value)
         check_type(value=value, allowed_types=[list, None], var_name="domain", raise_exception=True)
         self.__domain = value
 
     @property
     def label(self):
+        """
+        Input/Parameter/Output displayed name
+        :rtype: str
+        """
         return self.__label
 
     @label.setter
@@ -87,6 +125,10 @@ class InOutParam:
 
     @property
     def name(self):
+        """
+        Input/Parameter/Output unique name
+        :rtype: str
+        """
         return self.__name
 
     @name.setter
@@ -96,6 +138,10 @@ class InOutParam:
 
     @property
     def order_index(self):
+        """
+        Input/Parameter/Output index in displayed order
+        :rtype: int
+        """
         return self.__order_index
 
     @order_index.setter
@@ -105,6 +151,10 @@ class InOutParam:
 
     @property
     def dtype(self):
+        """
+        Input/Parameter/Output data type
+        :rtype: str
+        """
         return self.__dtype
 
     @dtype.setter
@@ -114,6 +164,10 @@ class InOutParam:
 
     @property
     def default_value(self):
+        """
+        Input/Parameter/Output default value (or default selected value if domain is set)
+        :rtype: str
+        """
         return self.__default_value
 
     @default_value.setter
@@ -121,6 +175,10 @@ class InOutParam:
         self.__default_value = value
 
     def get(self):
+        """
+        get the result in database and returns it (not kept locally, a call to backend is performed every time)
+        Return type depends on result data type
+        """
         if self.rid is None:
             raise ValueError("Provide a RID first")
         return self.api.op.result(rid=self.rid)
@@ -136,6 +194,7 @@ class Operator(IkatsObject):
         See props for members description
 
         :param api: see IkatsObject
+
         :param name: name of the operator to construct
         """
         super().__init__(api)
@@ -266,6 +325,7 @@ class Operator(IkatsObject):
             raise ValueError("Provide an operator name to fetch")
 
         result = self.api.op.get(name=self.name)
+
         self.desc = result.desc
         self.label = result.label
         self.op_id = result.op_id
@@ -292,6 +352,10 @@ class RunOp(Operator):
 
     @property
     def pid(self):
+        """
+        Unique identifier of the process ID
+        :rtype: str or int
+        """
         return self.__pid
 
     @pid.setter
@@ -299,17 +363,14 @@ class RunOp(Operator):
         check_type(value=value, allowed_types=[int, None], var_name="pid", raise_exception=True)
         self.__pid = value
 
-    def run(self):
-        pass
-
-    def status(self):
-        pass
-
     def results(self):
+        """
+        Reads the results pointers and assign them to thei respective outputs
+        """
         if self.pid is None:
             raise ValueError("Provide a PID first")
         results = self.api.op.results(pid=self.pid)
-        for info, i in enumerate(results):
+        for i, info in enumerate(results):
             self.outputs[i].rid = info["id"]
 
     def __str__(self):

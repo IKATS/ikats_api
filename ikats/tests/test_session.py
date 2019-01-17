@@ -1,34 +1,52 @@
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 from unittest import TestCase
 
 import requests
 
-from ikats.session_ import IkatsSession
+from ikats.objects.session_ import IkatsSession
 
 
 class TestSession(TestCase):
     def test_new(self):
         # Default session
-        s = IkatsSession()
-        self.assertEqual("http://localhost", s.host)
-        self.assertEqual(80, s.port)
+        session = IkatsSession()
+        self.assertEqual("http://localhost", session.host)
+        self.assertEqual(80, session.port)
 
-        self.assertEqual("%s:%s/pybase/ikats/algo/catalogue" % (s.host, s.port), s.catalog_url)
-        self.assertEqual("%s:%s/pybase/ikats/algo/execute" % (s.host, s.port), s.engine_url)
-        self.assertEqual("%s:%s/datamodel-api" % (s.host, s.port), s.tdm_url)
-        self.assertEqual("%s:%s/opentsdb" % (s.host, s.port), s.tsdb_url)
-        self.assertEqual(requests.Session, type(s.rs))
+        self.assertEqual("%s:%s/python_api" % (session.host, session.port), session.catalog_url)
+        self.assertEqual("%s:%s/python_api" % (session.host, session.port), session.engine_url)
+        self.assertEqual("%s:%s/datamodel-api" % (session.host, session.port), session.dm_url)
+        self.assertEqual("%s:%s/opentsdb" % (session.host, session.port), session.tsdb_url)
+        self.assertEqual(requests.Session, type(session.rs))
 
         # Nominal session
         host = "http://localhost"
         port = 80
-        s = IkatsSession(host=host, port=port)
-        self.assertEqual(host, s.host)
-        self.assertEqual(port, s.port)
+        session = IkatsSession(host=host, port=port)
+        self.assertEqual(host, session.host)
+        self.assertEqual(port, session.port)
 
         # Other nominal case implying port as string and URL with scheme
-        s = IkatsSession(host='http://ikats.org', port="80")
-        self.assertEqual("http://ikats.org", s.host)
-        self.assertEqual(80, s.port)
+        session = IkatsSession(host='http://ikats.org', port="80")
+        self.assertEqual("http://ikats.org", session.host)
+        self.assertEqual(80, session.port)
 
     def test_malformed_host(self):
         # Space in URL

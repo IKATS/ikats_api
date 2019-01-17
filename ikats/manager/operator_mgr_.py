@@ -1,7 +1,26 @@
-from ikats.client import TDMClient
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
 from ikats.client.catalog_client import CatalogClient
-from ikats.manager.generic_ import IkatsGenericApiEndPoint
-from ikats.objects.operator_ import Operator, InOutParam
+from ikats.client.catalog_stub import CatalogStub
+from ikats.client.datamodel_client import DatamodelClient
+from ikats.client.datamodel_stub import DatamodelStub
+from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
+from ikats.objects.operator_ import InOutParam, Operator
 
 
 def merge_json_to_op(op, json):
@@ -41,14 +60,19 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cat_client = CatalogClient(session=self.api.session)
-        self.tdm_client = TDMClient(session=self.api.session)
+        self.dm_client = DatamodelClient(session=self.api.session)
+        if self.api.emulate:
+            self.dm_client = DatamodelStub(session=self.api.session)
+            self.cat_client = CatalogStub(session=self.api.session)
+        else:
+            self.dm_client = DatamodelClient(session=self.api.session)
+            self.cat_client = CatalogClient(session=self.api.session)
 
     def list(self):
         """
         Get the list of operators
 
-        :return: the list of all available operators
+        :returns: the list of all available operators
         :rtype: list of Operators
         """
         results = []
@@ -66,7 +90,7 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :param name: Identifier of the operator (unique name)
         :type name: str
 
-        :return: the operator
+        :returns: the operator
         :rtype: Operator
 
         :raises IkatsNotFoundError: if no match
@@ -83,9 +107,10 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :param op: Operator containing necessary information to be run
         :type op: Operator
 
-        :return: Operator with running status elements
+        :returns: Operator with running status elements
         :rtype: OpRunner
         """
+        raise NotImplementedError("No yet implemented")
 
     def results(self, pid):
         """
@@ -94,10 +119,10 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :param pid: the ProcessId
         :type pid: str or int
 
-        :return: list of the results
+        :returns: list of the results
         :rtype: list
         """
-        return self.tdm_client.pid_results(pid=pid)
+        return self.dm_client.pid_results(pid=pid)
 
     def result(self, rid):
         """
@@ -106,7 +131,7 @@ class IkatsOperatorMgr(IkatsGenericApiEndPoint):
         :param rid: the ResultId
         :type rid: str or int
 
-        :return: specific result (type depends on the output type)
+        :returns: specific result (type depends on the corresponding output type)
         :rtype: object
         """
-        return self.tdm_client.pid_result(rid=rid)
+        return self.dm_client.rid_get(rid=rid)

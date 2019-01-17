@@ -1,17 +1,29 @@
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-# noinspection PyMethodOverriding,PyAbstractClass
-from ikats.client import TDMClient
-from ikats.manager.generic_ import IkatsGenericApiEndPoint
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
+from ikats.client.datamodel_client import DatamodelClient
+from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
 
 
 class IkatsTableMgr(IkatsGenericApiEndPoint):
     """
     Ikats EndPoint specific to Table management
     """
-
-    def __init__(self, *args, **kwargs):
-        super(IkatsTableMgr, self).__init__(*args, **kwargs)
 
     @staticmethod
     def create(data, name=None, description=None):
@@ -29,14 +41,14 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         :type name: str or None
         :type description: str or None
 
-        :return: the id of the created table
+        :returns: the id of the created table
         """
         if name is not None:
             data['table_desc']['name'] = name
         if description is not None:
             data['table_desc']['desc'] = description
-        tdm = TDMClient()
-        return tdm.create_table(data=data)
+        dm_client = DatamodelClient()
+        return dm_client.create_table(data=data)
 
     @staticmethod
     def list(name=None, strict=True):
@@ -51,11 +63,11 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         :type name: str or None
         :type strict: bool
 
-        :return: the list of tables matching the requirements
+        :returns: the list of tables matching the requirements
         :rtype: list
         """
-        tdm = TDMClient()
-        return tdm.list_tables(name=name, strict=strict)
+        dm_client = DatamodelClient()
+        return dm_client.list_tables(name=name, strict=strict)
 
     @staticmethod
     def read(name):
@@ -65,15 +77,15 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         :param name: the id key of the raw table to get data from
         :type name: str
 
-        :return: the content data stored.
+        :returns: the content data stored.
         :rtype: bytes or str or object
 
-        :raise IkatsNotFoundError: no resource identified by ID
-        :raise IkatsException: any other error
+        :raises IkatsNotFoundError: no resource identified by ID
+        :raises IkatsException: any other error
         """
 
-        tdm = TDMClient()
-        return tdm.read_table(name=name)
+        dm_client = DatamodelClient()
+        return dm_client.read_table(name=name)
 
     @staticmethod
     def delete(name):
@@ -83,11 +95,11 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         :param name: the name of the table to delete
         :type name: str
 
-        :return: the status of deletion (True=deleted, False otherwise)
+        :returns: the status of deletion (True=deleted, False otherwise)
         :rtype: bool
         """
-        tdm = TDMClient()
-        return tdm.delete_table(name=name)
+        dm_client = DatamodelClient()
+        return dm_client.delete_table(name=name)
 
     @staticmethod
     def extract(table_content, obs_id, items):
@@ -104,7 +116,7 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         :type obs_id: str
         :type items: list
 
-        :return: a dict of dict where first key is the obs_id and the sub keys are the items
+        :returns: a dict of dict where first key is the obs_id and the sub keys are the items
         :rtype: dict
         """
 
@@ -114,7 +126,7 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
         try:
             # Get the columns name with a mapping dict
             columns_name = {k: v for v, k in enumerate(table_content["headers"]["col"]["data"])}
-        except:
+        except KeyError:
             raise ValueError("Table content shall contain col headers to know the name of columns")
 
         try:
@@ -137,10 +149,9 @@ class IkatsTableMgr(IkatsGenericApiEndPoint):
             first_key_value = data_array[line_index][columns_name[obs_id]]
 
             if first_key_value in results:
-                raise ValueError("Key %s is not unique", obs_id)
+                raise ValueError("Key %s is not unique" % obs_id)
 
             results[first_key_value] = {}
             for item in items:
                 results[first_key_value][item] = data_array[line_index][columns_name[item]]
         return results
-

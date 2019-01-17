@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,5 +15,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-from pkgutil import extend_path
-__path__ = extend_path(__path__, __name__)
+
+from ikats import IkatsAPI
+from ikats.exceptions import IkatsNotFoundError
+
+
+def delete_ts_if_exists(fid):
+    """
+    Delete a TS if it exists
+    Nothing is return
+    Useful to prepare environments
+
+    :param fid: FID of the TS to delete
+    """
+    api = IkatsAPI()
+
+    try:
+        ts = api.ts.get(fid=fid)
+        return api.ts.delete(ts=ts, raise_exception=False)
+    except IkatsNotFoundError:
+        return True

@@ -15,13 +15,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-from pkgutil import extend_path
 
-from ikats.client.datamodel_client import DatamodelClient
-from ikats.lib import MDType
-from ikats.client.generic_client import GenericClient
-from ikats.client.generic_client import is_404, is_4xx, is_5xx, check_type, check_http_code
-from ikats.client.opentsdb_client import OpenTSDBClient
-from ikats.client.catalog_client import CatalogClient
 
-__path__ = extend_path(__path__, __name__)
+class IkatsGenericApiEndPoint:
+    """
+    Abstract Ikats End Point class
+    """
+
+    def __init__(self, api):
+        self.__api = None
+        self.api = api
+
+    @property
+    def api(self):
+        """
+        api is a redirect to the Ikats API
+        This allows High level object to interact with API to ease the User experience
+
+        :returns: the api
+        :rtype: IkatsAPI
+        """
+        return self.__api
+
+    @api.setter
+    def api(self, value):
+        self.__api = value

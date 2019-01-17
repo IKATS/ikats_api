@@ -1,4 +1,20 @@
-#!/bin/python3
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
 import logging
 import re
 
@@ -36,7 +52,7 @@ class IkatsSession:
         # URL to backends REST API
         self.__catalog_url = None
         self.__engine_url = None
-        self.__tdm_url = None
+        self.__dm_url = None
         self.__tsdb_url = None
 
         # Spark Context/Session
@@ -51,8 +67,8 @@ class IkatsSession:
         self.sc = sc
 
         self.catalog_url = "/python_api"
-        self.engine_url = "/pybase/ikats/algo/execute"
-        self.tdm_url = "/datamodel-api"
+        self.engine_url = "/python_api"
+        self.dm_url = "/datamodel-api"
         self.tsdb_url = "/opentsdb"
 
         self.name = name
@@ -60,9 +76,16 @@ class IkatsSession:
         self.log.addHandler(logging.StreamHandler())
         self.log.setLevel(logging.DEBUG)
 
+        # Set the requests modules minimum logger to Warning
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     @property
     def rs(self):
-        """requests Session"""
+        """
+        requests Session
+        :rtype: requests.Session
+        """
         return self.__rs
 
     @rs.setter
@@ -72,6 +95,10 @@ class IkatsSession:
 
     @property
     def host(self):
+        """
+        Hostname of the IKATS backend
+        :rtype: str
+        """
         return self.__host
 
     @host.setter
@@ -90,6 +117,10 @@ class IkatsSession:
 
     @property
     def port(self):
+        """
+        Port of the backend
+        :rtype: int
+        """
         return self.__port
 
     @port.setter
@@ -102,15 +133,23 @@ class IkatsSession:
         self.__port = int(value)
 
     @property
-    def tdm_url(self):
-        return self.__tdm_url
+    def dm_url(self):
+        """
+        URL of the Datamodel API
+        :rtype: str
+        """
+        return self.__dm_url
 
-    @tdm_url.setter
-    def tdm_url(self, value):
-        self.__tdm_url = "{}:{}{}".format(self.host, self.port, value)
+    @dm_url.setter
+    def dm_url(self, value):
+        self.__dm_url = "{}:{}{}".format(self.host, self.port, value)
 
     @property
     def tsdb_url(self):
+        """
+        URL of the Timeseries database
+        :rtype: str
+        """
         return self.__tsdb_url
 
     @tsdb_url.setter
@@ -119,6 +158,10 @@ class IkatsSession:
 
     @property
     def engine_url(self):
+        """
+        URL of the Operator runner engine
+        :rtype: str
+        """
         return self.__engine_url
 
     @engine_url.setter
@@ -128,6 +171,10 @@ class IkatsSession:
 
     @property
     def catalog_url(self):
+        """
+        URL of the Catalog backend
+        :rtype: str
+        """
         return self.__catalog_url
 
     @catalog_url.setter
@@ -136,6 +183,10 @@ class IkatsSession:
 
     @property
     def sc(self):
+        """
+        Spark Context
+        :rtype: SparkContext
+        """
         return self.__sc
 
     @sc.setter

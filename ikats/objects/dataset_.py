@@ -1,7 +1,24 @@
-#!/bin/python3
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+from ikats.exceptions import IkatsNotFoundError
+from ikats.lib import check_is_valid_ds_name, check_type
 from ikats.objects.generic_ import IkatsObject
 from ikats.objects.timeseries_ import Timeseries
-from ikats.lib import check_type, check_is_valid_ds_name
 
 
 class Dataset(IkatsObject):
@@ -11,7 +28,9 @@ class Dataset(IkatsObject):
 
     def __init__(self, api, name=None, desc=None, ts=None):
         """
-        Initialization
+        See props for members description
+
+        :param api: see IkatsObject
 
         :param name: Name of the Dataset
         :param desc: Description of the Dataset
@@ -72,18 +91,20 @@ class Dataset(IkatsObject):
         # Lazy loading
         if not self.__flag_ts_loaded:
             if self.name is not None:
-                self.__ts = self.api.ds.get(name=self.name)
+                try:
+                    self.fetch()
+                except IkatsNotFoundError:
+                    pass
             self.__flag_ts_loaded = True
         return self.__ts
 
     @ts.setter
     def ts(self, value):
         check_type(value=value, allowed_types=[list, None], var_name="ts", raise_exception=True)
-        if type(value) == list:
+        if value is not None:
             for ts in value:
-                if type(ts) not in [str, Timeseries]:
-                    raise TypeError("Timeseries shall be a TSUID or Timeseries object")
-            self.__ts = [x if type(x) == Timeseries else Timeseries(tsuid=x, api=self.api) for x in value]
+                check_type(value=ts, allowed_types=[str, Timeseries], var_name="ts", raise_exception=True)
+            self.__ts = [x if isinstance(x, Timeseries) else Timeseries(tsuid=x, api=self.api) for x in value]
 
     def __str__(self):
         return self.name
@@ -93,7 +114,7 @@ class Dataset(IkatsObject):
 
     def __len__(self):
         """
-        :return: the number of Timeseries composing the dataset
+        :returns: the number of Timeseries composing the dataset
         :rtype: int
         """
         return len(self.__ts)
@@ -107,7 +128,7 @@ class Dataset(IkatsObject):
         :param other: other Dataset to add
         :type other: Dataset
 
-        :return: The new Dataset
+        :returns: The new Dataset
         :rtype: Dataset
         """
 
@@ -121,15 +142,61 @@ class Dataset(IkatsObject):
         Append a Timeseries to this Dataset (but no save is performed)
 
         """
-        if type(ts) == str:
+        if isinstance(ts, str):
             # Assuming this is a TSUID as a string
             ts_to_add = [Timeseries(tsuid=ts, api=self.api)]
-        elif type(ts) == Timeseries:
+        elif isinstance(ts, Timeseries):
             # Because we use "extend", the input is converted to a list
             ts_to_add = [ts]
-        elif type(ts) == list:
+        elif isinstance(ts, list):
             ts_to_add = ts
         else:
             raise TypeError("Unknown type for Timeseries to add")
         self.ts = self.ts.extend(
-            [x if type(x) == Timeseries else Timeseries(tsuid=x, api=self.api) for x in ts_to_add])
+            [x if isinstance(x, Timeseries) else Timeseries(tsuid=x, api=self.api) for x in ts_to_add])
+
+    def save(self, raise_exception=True):
+        """
+        Save the dataset to database (creation only, no update available)
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
+
+        :param raise_exception: Indicates if exceptions shall be raised (True, default) or not (False)
+        :type raise_exception: bool
+
+        :returns: the status of the action
+        :rtype: bool
+
+        :raises ValueError: if dataset doesn't contain any Timeseries
+        :raises IkatsConflictError: if Dataset name already exists in database
+        """
+        return self.api.ds.save(ds=self, raise_exception=raise_exception)
+
+    def delete(self, deep=False, raise_exception=True):
+        """
+        Remove the dataset from database but keep the local object
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
+
+        :param deep: true to deeply remove dataset (tsuid and metadata erased)
+        :param raise_exception: Indicates if exceptions shall be raised (True, default) or not (False)
+
+        :type deep: bool
+        :type raise_exception: bool
+
+        :returns: the status of the action
+        :rtype: bool
+
+        :raises TypeError: if *deep* is not a bool
+        :raises IkatsNotFoundError: if dataset not found in database
+        """
+        return self.api.ds.delete(name=self.name, deep=deep, raise_exception=raise_exception)
+
+    def fetch(self):
+        """
+        Reads the dataset sub-objects from database
+        Retrieves the list of Timeseries and update object
+
+        :raises TypeError: if name is not a Dataset
+        :raises IkatsNotFoundError: if dataset not found in database
+        """
+
+        self.ts = self.api.ds.fetch(dataset=self)

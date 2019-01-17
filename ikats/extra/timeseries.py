@@ -1,3 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 import random
 
 
@@ -17,7 +35,7 @@ def gen_random_ts(sd=None, ed=None, nb_points=None, period=None):
     :type nb_points: int
     :type period: int
 
-    :return: the data points in a 2D array where 1st col is the timestamp in EPOCH (ms) and the 2nd is the value (float)
+    :returns: the data points in a 2D array where 1st col is the timestamp in EPOCH (ms) and the 2nd is the value
     :rtype: list of points
     """
 
@@ -44,4 +62,3 @@ def gen_random_ts(sd=None, ed=None, nb_points=None, period=None):
     for _ in time_col:
         val_col.append(random.random() * 10 - 5 + val_col[-1])
     return list(zip(time_col, val_col))
-

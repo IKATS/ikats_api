@@ -1,9 +1,29 @@
-import numpy as np
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 from unittest import TestCase
 
+import numpy as np
+
 from ikats.api import IkatsAPI
+from ikats.lib import MDType
 from ikats.extra.timeseries import gen_random_ts
-from ikats.objects.tests.lib import delete_ts_if_exists
+from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestTimeseries(TestCase):
@@ -26,6 +46,7 @@ class TestTimeseries(TestCase):
 
     def test_from_scratch(self):
         api = IkatsAPI()
+        delete_ts_if_exists("TEST_TS")
 
         # Create a new TS
         ts = api.ts.new()
@@ -33,12 +54,13 @@ class TestTimeseries(TestCase):
 
         # Check
         self.assertEqual(10, len(ts))
+
         # No FID provided
         with self.assertRaises(ValueError):
             ts.save()
 
         ts.fid = "TEST_TS"
-        ts.save()
+        ts.save(generate_metadata=True)
 
         # TSUID has been set by the save action
         self.assertIsNotNone(ts.tsuid)
@@ -94,3 +116,26 @@ class TestTimeseries(TestCase):
 
         # Delete TS using no exception raise
         self.assertTrue(api.ts.delete(ts=ts2, raise_exception=False))
+
+    def test_inherit(self):
+        fid = "TEST_TS"
+        fid2 = "TEST_TS2"
+
+        api = IkatsAPI()
+        self.assertTrue(delete_ts_if_exists(fid=fid))
+        self.assertTrue(delete_ts_if_exists(fid=fid2))
+
+        # Save parent TS
+        parent_ts = api.ts.new(fid=fid, data=gen_random_ts(sd=1000000000000, ed=1000000010000, period=1000))
+        parent_ts.metadata.set(name="my_meta", value=42, dtype=MDType.NUMBER)
+        parent_ts.save()
+
+        # Check inheritance
+        child_ts = api.ts.new(fid=fid2, data=gen_random_ts(sd=1000000010000, ed=1000000020000, period=1000))
+        self.assertTrue(child_ts.save(parent=parent_ts))
+        child_ts.metadata.get("my_meta")
+
+        # cleanup
+        self.assertTrue(parent_ts.delete(raise_exception=False))
+        self.assertTrue(child_ts.delete(raise_exception=False))
+

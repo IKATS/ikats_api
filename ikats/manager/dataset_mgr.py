@@ -1,8 +1,26 @@
-# noinspection PyMethodOverriding,PyAbstractClass
-from ikats.client import TDMClient
-from ikats.exceptions import IkatsConflictError
-from ikats.lib import check_type, check_is_valid_ds_name
-from ikats.manager.generic_ import IkatsGenericApiEndPoint
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+from ikats.client import is_404
+from ikats.client.datamodel_client import DatamodelClient
+from ikats.client.datamodel_stub import DatamodelStub
+from ikats.exceptions import IkatsConflictError, IkatsException, IkatsInputError
+from ikats.lib import check_is_valid_ds_name, check_type
+from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
 from ikats.objects.dataset_ import Dataset
 from ikats.objects.timeseries_ import Timeseries
 
@@ -14,11 +32,14 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client = TDMClient(session=self.api.session)
+        if self.api.emulate:
+            self.client = DatamodelStub(session=self.api.session)
+        else:
+            self.client = DatamodelClient(session=self.api.session)
 
     def new(self, name=None, desc=None, ts=None):
         """
-        Create an empty local Dataset with optional name
+        Create an empty local Dataset with optional *name*, *desc* and *ts*
 
         :param name: Dataset name to use
         :param desc: description of the dataset
@@ -28,48 +49,67 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         :type desc: str
         :type ts: list of Timeseries
 
-        :return: the Dataset object
+        :returns: the Dataset object
         :rtype: Dataset
 
-        :raises IkatsConflictError: if name already present in database
+        :raises IkatsConflictError: if *name* already present in database
         """
         ds_list = self.client.dataset_list()
-        if len([x for x in ds_list if x['name'] == name]) > 0:
-            raise IkatsConflictError("The dataset name already exist in database, use 'get' method instead")
+        if [x for x in ds_list if x['name'] == name]:
+            raise IkatsConflictError("The dataset name already exists in database, use 'get' method instead")
         return Dataset(api=self.api, name=name, desc=desc, ts=ts)
 
-    def save(self, ds):
+    def save(self, ds, raise_exception=True):
         """
-        Create a new data set composed of the *ts*
+        Save the dataset to database (creation only, no update available)
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
         :param ds: Dataset to create
-        :type ds: Dataset
+        :param raise_exception: Indicates if exceptions shall be raised (True, default) or not (False)
 
-        :return: execution status (True if success, False otherwise)
+        :type ds: Dataset
+        :type raise_exception: bool
+
+        :returns: the status of the action
         :rtype: bool
 
-        :raises TypeError: if *ts* is not a list
+        :raises TypeError: if *ds* is not a valid Dataset object
+        :raises ValueError: if *ds* doesn't contain any Timeseries
+        :raises IkatsConflictError: if Dataset name already exists in database
         """
 
         check_is_valid_ds_name(ds.name, raise_exception=True)
-        if ds.ts is None or (type(ds.ts) is list and len(ds.ts) == 0):
+        if ds.ts is None or (isinstance(ds.ts, list) and not ds.ts):
             raise ValueError("No TS to save")
 
-        self.client.dataset_create(
-            name=ds.name,
-            description=ds.desc,
-            ts=[x.tsuid for x in ds.ts])
+        for ts in ds.ts:
+            if ts.tsuid is None:
+                raise IkatsInputError("TS %s doesn't have a TSUID" % ts.fid)
+
+        try:
+            self.client.dataset_create(
+                name=ds.name,
+                description=ds.desc,
+                ts=[x.tsuid for x in ds.ts])
+        except IkatsException:
+            if raise_exception:
+                raise
+            return False
+        return True
 
     def get(self, name):
         """
-        Reads the dataset information in database
+        Reads the dataset information from database
         Retrieves description and list of Timeseries
 
         :param name: Dataset name
         :type name: str
 
-        :raise TypeError: if dataset name is malformed
-        :raise IkatsNotFoundError: if dataset not found in database
+        :returns: the retrieved Dataset object with Timeseries list filled
+        :rtype: Dataset
+
+        :raises TypeError: if *name* is not a Dataset
+        :raises IkatsNotFoundError: if dataset not found in database
         """
         check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
 
@@ -78,37 +118,68 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         description = result.get("description", "")
         return Dataset(api=self.api, name=name, desc=description, ts=ts)
 
-    def delete(self, name, deep=False):
+    def fetch(self, dataset):
         """
-        Remove dataset from base
+        Reads the dataset sub-objects from database
+        Retrieves the list of Timeseries
+
+        :param dataset: Dataset object
+        :type dataset: Dataset
+
+        :returns: the list of Timeseries composing the Dataset
+        :rtype: list of Timeseries
+
+        :raises TypeError: if name is not a Dataset
+        :raises IkatsNotFoundError: if dataset not found in database
+        """
+        check_type(value=dataset, allowed_types=Dataset, var_name="dataset", raise_exception=True)
+
+        result = self.client.dataset_read(dataset.name)
+        ts = [Timeseries(tsuid=x['tsuid'], fid=x['funcId'], api=self.api) for x in result.get('ts_list', [])]
+        return ts
+
+    def delete(self, name, deep=False, raise_exception=True):
+        """
+        Remove dataset from database
+        Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
         :param name: Dataset name to delete
-        :type name: str
-
         :param deep: true to deeply remove dataset (tsuid and metadata erased)
-        :type deep: boolean
+        :param raise_exception: Indicates if exceptions shall be raised (True, default) or not (False)
 
-        :return: True if operation is a success, False if error occurred
+        :type name: str or Dataset
+        :type deep: bool
+        :type raise_exception: bool
+
+        :returns: the status of the action
         :rtype: bool
-
-        .. note::
-           Removing an unknown data set results in a successful operation (server constraint)
-           The only possible errors may come from server (HTTP status code 5xx)
 
         :raises TypeError: if *name* is not a str
         :raises TypeError: if *deep* is not a bool
+        :raises ValueError: if *name* is a valid name
+        :raises IkatsNotFoundError: if dataset not found in database
         """
         check_type(value=deep, allowed_types=[bool, None], var_name="deep", raise_exception=True)
-        check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
+        check_type(value=name, allowed_types=[str, Dataset], var_name="name", raise_exception=True)
+
+        if isinstance(name, Dataset):
+            name = name.name
+
         check_is_valid_ds_name(value=name, raise_exception=True)
 
-        return self.client.dataset_delete(name=name, deep=deep)
+        try:
+            self.client.dataset_delete(name=name, deep=deep)
+        except IkatsException:
+            if raise_exception:
+                raise
+            return False
+        return True
 
     def list(self):
         """
-        Get the list of all dataset
+        Get the list of all datasets
 
-        :return: the list of Dataset objects
+        :returns: the list of Dataset objects
         :rtype: list of Dataset
         """
 

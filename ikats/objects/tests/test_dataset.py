@@ -1,7 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+Copyright 2019 CS Systèmes d'Information
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 from unittest import TestCase
 
 from ikats import IkatsAPI
-from ikats.exceptions import IkatsConflictError
+from ikats.exceptions import IkatsConflictError, IkatsInputError, IkatsNotFoundError
+from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestDataset(TestCase):
@@ -29,6 +48,9 @@ class TestDataset(TestCase):
         with self.assertRaises(IkatsConflictError):
             api.ds.new(name="Portfolio")
 
+        self.assertEqual(ds.name, str(ds))
+        self.assertEqual("Dataset %s" % ds.name, repr(ds))
+
     def test_get(self):
         api = IkatsAPI()
 
@@ -39,8 +61,8 @@ class TestDataset(TestCase):
 
     def test_add(self):
         api = IkatsAPI()
-        ts_list1 = [api.ts.new() for x in range(10)]
-        ts_list2 = [api.ts.new() for x in range(11, 20)]
+        ts_list1 = [api.ts.new() for _ in range(10)]
+        ts_list2 = [api.ts.new() for _ in range(11, 20)]
 
         # Direct add
         ds1 = api.ds.new(ts=ts_list1)
@@ -70,3 +92,37 @@ class TestDataset(TestCase):
                 ds.name = value
             with self.assertRaises(TypeError):
                 ds.desc = value
+
+    def test_create_delete(self):
+
+        # Cleanup
+        api = IkatsAPI()
+        for x in range(10):
+            delete_ts_if_exists(fid="FID_TEST_%s" % x)
+
+        # Setup
+        ts_list1 = [api.ts.new(fid="FID_TEST_%s" % x) for x in range(10)]
+        ds1 = api.ds.new(name="DS_TEST", desc="my description", ts=ts_list1)
+
+        # Test deletion with unknown dataset
+        with self.assertRaises(IkatsNotFoundError):
+            api.ds.delete(name=ds1)
+        self.assertFalse(ds1.delete(raise_exception=False))
+
+        # Check
+        if not ds1.save(raise_exception=False):
+            self.fail("Dataset should have been saved")
+
+        # Test deletion
+        self.assertTrue(ds1.delete(deep=True))
+
+        # Test empty TS list
+        ds1.ts = []
+        with self.assertRaises(ValueError):
+            ds1.save()
+
+        # No TSUID assigned to ts_list2 should produce an IkatsInputError when saving
+        ts_list2 = [api.ts.new() for _ in range(10)]
+        ds2 = api.ds.new(name="DS_TEST2", desc="my description", ts=ts_list2)
+        with self.assertRaises(IkatsInputError):
+            ds2.save()

@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +15,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-import json
 
-import numpy as np
+import json
+import string
 import time
 from datetime import datetime
-import string
 
-from ikats.client import GenericClient
-from ikats.client.generic_client import is_4xx, is_5xx
+import numpy as np
+
+from ikats.client.generic_client import GenericClient, is_4xx, is_5xx
 from ikats.exceptions import IkatsNotFoundError, IkatsServerError
+from ikats.lib import check_type
 
 TEMPLATES = {
     'direct_extract_by_tsuid': '/api/query?start={sd}&end={ed}&tsuid={ts_info}&ms=true',
@@ -39,6 +41,58 @@ class OpenTSDBClient(GenericClient):
     Wrapper for Ikats to connect to OpenTSDB api
     """
 
+    @staticmethod
+    def gen_metric_tags(metric=None, tags=None):
+        """
+        Generate the metric and tags for openTSDB
+        OpenTSDB can handle 16M different metrics, 16M tags key (tagk) and 16M tag values (tagv)
+        ` Refer to Limited Unique IDs (UIDs) <http://opentsdb.net/docs/build/html/user_guide/writing.html>`_
+        Using the date to fill the metric and tags allow to have a useful information in OpenTSDB (import date)
+
+        To not overshoot the limit of 16M, we manage the metric and tags as follow:
+        - Metric: hundreds of nanoseconds of the current second (on 7 digits)
+                * used to make sure there won't be 2 similar TS imported at the same time
+                * example: "0563185" for 56.3185ms, or 56318.5us or 56318500ns
+                * value domain: [0; 9999999] < 16M possible values
+        - tags matches the following scheme:
+            * import_year : year of import (4 digits)
+                * example: "2016"
+                * value domain: unlimited (but Ikats probably won't be alive in 16M years)
+            * import_month_day: month and day on 2 digits each (padding zeros to fill).
+                * example: "11_05" for Nov. 05th
+                * value domain: 12 months * 31 days = 372 different possibilities < 16M
+            * import_time: hours minutes seconds of day on 2 digits each (padding zeros to fill).
+                * example: "14_05_35" for 14hours, 5 minutes and 35 seconds"
+                * value domain: 24 hours * 60 minutes * 60 seconds = 86400 different possibilities < 16M
+
+        :param metric: metric to use (if known, let None otherwise)
+        :param tags: tags to use (if known, let None otherwise)
+
+        :type metric: str or None
+        :type tags: dict or None
+
+        :returns: computed metric and tags
+        :rtype: tuple
+        """
+
+        # Now with nanosecond precision
+        now_ns = float("%.9f" % time.time())
+        current_date = datetime.fromtimestamp(now_ns)
+
+        # Compute metric and tags based on date
+        # metric represents the sub second (in hundreds of ns)
+        local_metric = str(int((now_ns - int(now_ns)) * 1E7))
+        local_tags = {
+            "import_year": current_date.year,
+            "import_month_day": current_date.strftime("%m_%d"),
+            "import_time": current_date.strftime("%H_%M_%S"),
+        }
+
+        local_metric = metric or local_metric
+        local_tags = tags or local_tags
+
+        return local_metric, local_tags
+
     def get_nb_points_of_tsuid(self, tsuid):
         """
         return the effective imported number of points for a given tsuid
@@ -47,7 +101,7 @@ class OpenTSDBClient(GenericClient):
 
         :type tsuid: str
 
-        :return: the imported number of points
+        :returns: the imported number of points
         :rtype: int
 
         :raises IkatsNotFoundError: if no TS with tsuid were found
@@ -61,7 +115,7 @@ class OpenTSDBClient(GenericClient):
                                  "tsuid": tsuid
                              })
 
-        results = response.json()
+        results = response.json
 
         if 'error' in results:
             if 'No such name for' in results['error']['message']:
@@ -80,7 +134,7 @@ class OpenTSDBClient(GenericClient):
         :param tsuid: TSUID to get info from
         :type tsuid: str
 
-        :return: the metric and tags
+        :returns: the metric and tags
         :rtype: tuple (metric, tags)
 
         :raises ValueError: if TSUID is unknown
@@ -115,7 +169,7 @@ class OpenTSDBClient(GenericClient):
             if 200 <= response.status_code < 300:
                 try:
                     result = response.json['name']
-                except:
+                except KeyError:
                     raise ValueError("OpenTSDB result not parsable (got:%s)" % response.status_code)
             else:
                 raise ValueError("UID unknown (got:%s)" % response.status_code)
@@ -132,57 +186,6 @@ class OpenTSDBClient(GenericClient):
 
         return metric, tags
 
-    def gen_metric_tags(self, metric=None, tags=None):
-        """
-        Generate the metric and tags for openTSDB
-        OpenTSDB can handle 16M different metrics, 16M tags key (tagk) and 16M tag values (tagv)
-        ` Refer to Limited Unique IDs (UIDs) <http://opentsdb.net/docs/build/html/user_guide/writing.html>`_
-        Using the date to fill the metric and tags allow to have a useful information in OpenTSDB (import date)
-
-        To not overshoot the limit of 16M, we manage the metric and tags as follow:
-        - Metric: hundreds of nanoseconds of the current second (on 7 digits)
-                * used to make sure there won't be 2 similar TS imported at the same time
-                * example: "0563185" for 56.3185ms, or 56318.5us or 56318500ns
-                * value domain: [0; 9999999] < 16M possible values
-        - tags matches the following scheme:
-            * import_year : year of import (4 digits)
-                * example: "2016"
-                * value domain: unlimited (but Ikats probably won't be alive in 16M years)
-            * import_month_day: month and day on 2 digits each (padding zeros to fill).
-                * example: "11_05" for Nov. 05th
-                * value domain: 12 months * 31 days = 372 different possibilities < 16M
-            * import_time: hours minutes seconds of day on 2 digits each (padding zeros to fill).
-                * example: "14_05_35" for 14hours, 5 minutes and 35 seconds"
-                * value domain: 24 hours * 60 minutes * 60 seconds = 86400 different possibilities < 16M
-
-        :param metric: metric to use (if known, let None otherwise)
-        :param tags: tags to use (if known, let None otherwise)
-
-        :type metric: str or None
-        :type tags: dict or None
-
-        :return: computed metric and tags
-        :rtype: tuple
-        """
-
-        # Now with nanosecond precision
-        now_ns = float("%.9f" % time.time())
-        current_date = datetime.fromtimestamp(now_ns)
-
-        # Compute metric and tags based on date
-        # metric represents the sub second (in hundreds of ns)
-        local_metric = str(int((now_ns - int(now_ns)) * 1E7))
-        local_tags = {
-            "import_year": current_date.year,
-            "import_month_day": current_date.strftime("%m_%d"),
-            "import_time": current_date.strftime("%H_%M_%S"),
-        }
-
-        local_metric = metric or local_metric
-        local_tags = tags or local_tags
-
-        return local_metric, local_tags
-
     def assign_metric(self, metric, tags):
         """
         From a defined metric and tags, generate the corresponding TSUID
@@ -190,22 +193,19 @@ class OpenTSDBClient(GenericClient):
         :param metric:
         :param tags:
 
-        :return: the TSUID
+        :returns: the TSUID
         :rtype: str
 
         """
 
-        # Filling query parameters
-        uri_params = {
-            "metric": metric,
-            "tagk": ','.join([str(k) for k, v in tags.items()]),
-            "tagv": ','.join([str(v) for k, v in tags.items()])
-        }
-
         response = self.send(root_url=self.session.tsdb_url,
                              verb=GenericClient.VERB.GET,
                              template=TEMPLATES['assign_metric'],
-                             uri_params=uri_params)
+                             uri_params={
+                                 "metric": metric,
+                                 "tagk": ','.join([str(k) for k, v in tags.items()]),
+                                 "tagv": ','.join([str(v) for k, v in tags.items()])
+                             })
 
         results = response.json
 
@@ -238,23 +238,23 @@ class OpenTSDBClient(GenericClient):
         :param data: json response from OpenTSDB to an uid assignment
         :type data: dict
 
-        :return: uid stored in database
+        :returns: uid stored in database
         :rtype: str
         """
         if value in data[item_type]:
             # new uid created
             return data[item_type][value]
-        elif value in data[item_type + '_errors']:
+        if value in data[item_type + '_errors']:
             uid = str(data[item_type + '_errors'][value]).split(':')[1].strip()
             # Test if returned an hex value
             if all(c in string.hexdigits for c in uid):
                 # uid already exist, return value
                 return uid
-            else:
-                # impossible to create new id because of bad format provided
-                raise ValueError(
-                    "UID assignment : error when assigning new (item_type=%s) (value=%s) from openTSDB : BAD FORMAT"
-                    % (item_type, value))
+            # impossible to create new id because of bad format provided
+            raise ValueError(
+                "UID assignment : error when assigning new (item_type=%s) (value=%s) from openTSDB : BAD FORMAT"
+                % (item_type, value))
+        raise ValueError("not a valid JSON")
 
     def get_ts_by_tsuid(self, tsuid, sd, ed=None):
         """
@@ -287,9 +287,7 @@ class OpenTSDBClient(GenericClient):
         """
 
         # Check inputs
-        if type(sd) != int:
-            self.session.log.error("sd must be a number (got: %s)", sd)
-            raise TypeError("sd must be a number (got: %s)" % sd)
+        check_type(value=sd, allowed_types=int, var_name="sd", raise_exception=True)
         if sd < 0:
             self.session.log.error("sd must be positive (got: %s)", sd)
             raise ValueError("sd must be positive (got: %s)" % sd)
@@ -297,9 +295,7 @@ class OpenTSDBClient(GenericClient):
             ed = int(time.time() * 1000)
             self.session.log.warning("End date missing, 'now' will be used: %s", ed)
         else:
-            if type(ed) != int:
-                self.session.log.error("ed must be a number (got: %s)", ed)
-                raise TypeError("ed must be a number (got: %s)" % ed)
+            check_type(value=ed, allowed_types=int, var_name="ed", raise_exception=True)
             if ed < 0:
                 self.session.log.error("ed must be positive (got: %s)", ed)
                 raise ValueError("ed must be positive (got: %s)" % ed)
@@ -320,7 +316,7 @@ class OpenTSDBClient(GenericClient):
         # Number of retry to perform in case of dynamic read/write issues (see below)
         max_retry_count = 1
         retry_count = 0
-        while retry_count < max_retry_count:
+        while retry_count <= max_retry_count:
             retry_count += 1
 
             response = self.send(root_url=self.session.tsdb_url,
@@ -334,7 +330,7 @@ class OpenTSDBClient(GenericClient):
                 # Check if data are returned
                 # No data may indicate the data are not yet flushed into database by the server (async-hbase)
                 # This may occur when data are read shortly after they have been put to database
-                if 'dps' not in response.json[0] or len(response.json[0]['dps']) == 0:
+                if 'dps' not in response.json[0] or not response.json[0]['dps']:
                     # Wait 4 seconds before retrying
                     time.sleep(4)
                     continue
@@ -352,6 +348,7 @@ class OpenTSDBClient(GenericClient):
             except KeyError:
                 raise ValueError(response.json)
             return array
+        raise IkatsServerError("Backend didn't provide the points")
 
     def add_points(self, tsuid, data):
         """
@@ -362,7 +359,7 @@ class OpenTSDBClient(GenericClient):
         :type tsuid: str
         :type data: list
 
-        :return: the start_date, end_date, nb_points
+        :returns: the start_date, end_date, nb_points
         """
 
         metric, tags = self._get_metric_tags_from_tsuid(tsuid=tsuid)
@@ -384,8 +381,8 @@ class OpenTSDBClient(GenericClient):
 
         if "success" in response.data and response.data["success"] != len(data):
             self.session.log.debug(response.data)
-            raise IkatsServerError("Database wrote only %s points out of %s", response.data["success"], len(data),
-                                   response.data)
+            raise IkatsServerError("Database wrote only %s points out of %s %s" % (response.data["success"], len(data),
+                                                                                   response.data))
 
         is_4xx(response, "Unexpected client error: {code}")
         is_5xx(response, "Unexpected server error: {code}")
