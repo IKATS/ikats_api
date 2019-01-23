@@ -11,7 +11,7 @@ setup(name='ikats',
       author_email='fabien.tortora@c-s.fr',
       url='https://www.ikats.org',
       packages=find_packages(),
-      install_requires=["numpy", 'requests'],
+      install_requires=["numpy", 'requests', 'schema'],
       keywords='timeseries, big data, spark',
       license='Apache License 2.0',
       )

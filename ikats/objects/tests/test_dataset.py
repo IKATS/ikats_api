@@ -19,7 +19,8 @@ limitations under the License.
 from unittest import TestCase
 
 from ikats import IkatsAPI
-from ikats.exceptions import IkatsConflictError, IkatsInputError, IkatsNotFoundError
+from ikats.exceptions import (IkatsConflictError, IkatsInputError,
+                              IkatsNotFoundError)
 from ikats.tests.lib import delete_ts_if_exists
 
 
@@ -97,6 +98,7 @@ class TestDataset(TestCase):
 
         # Cleanup
         api = IkatsAPI()
+        api.ds.delete(name="DS_TEST", deep=True, raise_exception=False)
         for x in range(10):
             delete_ts_if_exists(fid="FID_TEST_%s" % x)
 

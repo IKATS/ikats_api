@@ -21,8 +21,8 @@ from unittest import TestCase
 import numpy as np
 
 from ikats.api import IkatsAPI
-from ikats.lib import MDType
 from ikats.extra.timeseries import gen_random_ts
+from ikats.lib import MDType
 from ikats.tests.lib import delete_ts_if_exists
 
 
@@ -138,4 +138,3 @@ class TestTimeseries(TestCase):
         # cleanup
         self.assertTrue(parent_ts.delete(raise_exception=False))
         self.assertTrue(child_ts.delete(raise_exception=False))
-

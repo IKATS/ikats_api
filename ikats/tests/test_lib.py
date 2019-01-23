@@ -18,7 +18,8 @@ limitations under the License.
 
 from unittest import TestCase
 
-from ikats.lib import check_type, check_is_valid_epoch, check_is_valid_ds_name, check_is_fid_valid
+from ikats.lib import (check_is_fid_valid, check_is_valid_ds_name,
+                       check_is_valid_epoch, check_type)
 
 
 class TestUtils(TestCase):

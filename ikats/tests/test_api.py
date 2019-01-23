@@ -19,21 +19,19 @@ limitations under the License.
 from unittest import TestCase
 
 from ikats import IkatsAPI
-from ikats.exceptions import IkatsNotFoundError
+from ikats.exceptions import IkatsNotFoundError, IkatsServerError
 from ikats.extra.timeseries import gen_random_ts
 from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestApi(TestCase):
     def test_ds(self):
-
         # DS list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         ds_list = api.ds.list()
         self.assertLess(0, len(ds_list))
 
     def test_ts(self):
-
         # TS list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         ts_list = api.ts.list()
@@ -53,7 +51,6 @@ class TestApi(TestCase):
         self.assertEqual(my_fid, new_fid)
 
     def test_op(self):
-
         # OP list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         op_list = api.op.list()
@@ -65,3 +62,14 @@ class TestApi(TestCase):
         # OP.results
         with self.assertRaises(IkatsNotFoundError):
             api.op.results(pid="unknown")
+
+    def test_table(self):
+        api = IkatsAPI(host="http://localhost", port=80, emulate=False)
+
+        tables_list = api.table.list()
+        self.assertEqual(0, len(tables_list))
+
+        # see bugs #2935
+        # with self.assertRaises(IkatsNotFoundError):
+        with self.assertRaises(IkatsServerError):
+            api.table.delete(name="unknownTable")

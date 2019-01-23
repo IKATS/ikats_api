@@ -16,9 +16,13 @@ limitations under the License.
 
 """
 
-from ikats.client.generic_client import (GenericClient, check_http_code, is_4xx, is_5xx, is_404)
-from ikats.exceptions import (IkatsConflictError, IkatsException, IkatsInputError, IkatsNotFoundError, IkatsServerError)
-from ikats.lib import check_is_fid_valid, check_is_valid_ds_name, check_type, MDType
+from ikats.client.generic_client import (GenericClient, check_http_code,
+                                         is_4xx, is_5xx, is_400, is_404,
+                                         is_409)
+from ikats.exceptions import (IkatsConflictError, IkatsException,
+                              IkatsNotFoundError)
+from ikats.lib import (MDType, check_is_fid_valid, check_is_valid_ds_name,
+                       check_type)
 
 # List of templates used to build URL.
 #
@@ -50,7 +54,11 @@ TEMPLATES = {
     'pid_read': '/processdata/{pid}',
     'rid_read': '/processdata/id/download/{rid}',
     'rid_add': '/processdata?name={name}&processId={process_id}',
-    'rid_delete': '/processdata/{rid}'
+    'rid_delete': '/processdata/{rid}',
+    'table_delete': '/table/{name}',
+    'table_read': '/table/{name}',
+    'table_list': '/table',
+    'create_table': '/table',
 }
 
 
@@ -847,7 +855,7 @@ class DatamodelClient(GenericClient):
 
         return response.json
 
-    def create_table(self, data):
+    def table_create(self, data):
         """
         Create a table
 
@@ -857,6 +865,7 @@ class DatamodelClient(GenericClient):
         :returns: the name of the created table
 
         :raises IkatsInputError: for any error present in the inputs
+        :raises IkatsConflictError: if table already exist
         :raises IkatsException: for any other error during the request
         """
 
@@ -866,22 +875,14 @@ class DatamodelClient(GenericClient):
                              json_data=data,
                              files=None)
 
-        if response.status_code == 400:
-            err_msg = 'Bad request while creating Table %s produced: %s' % (response.url, response.json)
-            raise IkatsInputError(err_msg)
-        elif response.status_code == 409:
-            err_msg = 'Conflict detected while creating Table %s produced: %s' % (response.url, response.json)
-            raise IkatsConflictError(err_msg)
-        elif response.status_code >= 500:
-            err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
-                                                                            response.url,
-                                                                            response.json)
-            self.session.log.error(err_msg)
-            raise IkatsServerError(err_msg)
+        is_400(response=response, msg=response.json)
+        is_409(response=response, msg="Table %s already exist in database" % data['table_desc']['name'])
+        is_4xx(response, "Unexpected client error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
 
         return response.json
 
-    def list_tables(self, name=None, strict=True):
+    def table_list(self, name=None, strict=True):
         """
         List all tables
         If name is specified, filter by name
@@ -901,22 +902,16 @@ class DatamodelClient(GenericClient):
         """
         response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
-                             template=TEMPLATES['list_tables'],
+                             template=TEMPLATES['table_list'],
                              uri_params={'name': name, 'strict': strict},
                              data=None,
                              files=None)
 
-        if response.status_code == 404:
-            return response.json
-        if response.status_code >= 500:
-            err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
-                                                                            response.url,
-                                                                            response.json)
-            self.session.log.error(err_msg)
-            raise IkatsException(err_msg)
+        is_5xx(response, "Unexpected server error : {code}")
+
         return response.json
 
-    def read_table(self, name):
+    def table_read(self, name):
         """
         Reads the data blob content: for the unique table identified by id.
 
@@ -924,7 +919,7 @@ class DatamodelClient(GenericClient):
         :type name: str
 
         :returns: the content data stored.
-        :rtype: bytes or str or object
+        :rtype: dict
 
         :raises IkatsNotFoundError: no resource identified by ID
         :raises IkatsException: any other error
@@ -932,25 +927,19 @@ class DatamodelClient(GenericClient):
 
         response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.GET,
-                             template=TEMPLATES['read_table'],
+                             template=TEMPLATES['table_read'],
                              uri_params={'name': name},
                              data=None,
                              files=None)
 
-        if response.status_code == 400:
-            raise IkatsInputError("Wrong input: [%s]" % name)
-        if response.status_code == 404:
-            raise IkatsNotFoundError("Table %s not found" % name)
-        if response.status_code >= 500:
-            err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
-                                                                            response.url,
-                                                                            response.json)
-            self.session.log.error(err_msg)
-            raise IkatsException(err_msg)
+        is_400(response=response, msg="Wrong input: [%s]" % name)
+        is_404(response=response, msg="Table %s not found" % name)
+        is_4xx(response, "Unexpected client error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
 
         return response.json
 
-    def delete_table(self, name):
+    def table_delete(self, name):
         """
         Delete a table
 
@@ -961,19 +950,13 @@ class DatamodelClient(GenericClient):
 
         response = self.send(root_url=self.session.dm_url + self.root_url,
                              verb=GenericClient.VERB.DELETE,
-                             template=TEMPLATES['delete_table'],
+                             template=TEMPLATES['table_delete'],
                              uri_params={'name': name})
 
-        if response.status_code == 400:
-            raise IkatsInputError("Wrong input: [%s]" % name)
-        if response.status_code == 404:
-            raise IkatsNotFoundError("Table %s not found" % name)
-        elif response.status_code >= 500:
-            err_msg = "%s (unexpected status_code here) %s produced: %s" % (response.status_code,
-                                                                            response.url,
-                                                                            response.json)
-            self.session.log.error(err_msg)
-            raise IkatsException(err_msg)
+        is_400(response, msg="Wrong input: [%s]" % name)
+        is_404(response, msg="Table %s not found" % name)
+        is_4xx(response, "Unexpected client error : {code}")
+        is_5xx(response, "Unexpected server error : {code}")
 
     def ts_delete(self, tsuid, raise_exception=True):
         """

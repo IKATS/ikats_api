@@ -19,9 +19,9 @@ limitations under the License.
 from ikats.client.datamodel_client import DatamodelClient
 from ikats.client.datamodel_stub import DatamodelStub
 from ikats.exceptions import IkatsException
-from ikats.lib import check_type, MDType
+from ikats.lib import MDType, check_type
 from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
-from ikats.objects.metadata_ import Metadata
+from ikats.objects import Metadata
 
 
 class IkatsMetadataMgr(IkatsGenericApiEndPoint):
@@ -32,9 +32,9 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.api.emulate:
-            self.client = DatamodelStub(session=self.api.session)
+            self.dm_client = DatamodelStub(session=self.api.session)
         else:
-            self.client = DatamodelClient(session=self.api.session)
+            self.dm_client = DatamodelClient(session=self.api.session)
 
     def save(self, tsuid, name, value, dtype=MDType.STRING, raise_exception=True):
         """
@@ -68,9 +68,9 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
         """
 
         try:
-            result = self.client.metadata_create(tsuid=tsuid, name=name, value=value,
-                                                 data_type=dtype,
-                                                 force_update=True)
+            result = self.dm_client.metadata_create(tsuid=tsuid, name=name, value=value,
+                                                    data_type=dtype,
+                                                    force_update=True)
             return result
         except IkatsException:
             if raise_exception:
@@ -95,7 +95,7 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
 
         :raises IkatsNotFoundError: if metadata doesn't exist
         """
-        return self.client.metadata_delete(tsuid=tsuid, name=name, raise_exception=raise_exception)
+        return self.dm_client.metadata_delete(tsuid=tsuid, name=name, raise_exception=raise_exception)
 
     def fetch(self, metadata):
         """
@@ -117,7 +117,7 @@ class IkatsMetadataMgr(IkatsGenericApiEndPoint):
         """
 
         check_type(value=metadata, allowed_types=Metadata, raise_exception=True)
-        result = self.client.metadata_get_typed(ts_list=[metadata.tsuid])[metadata.tsuid]
+        result = self.dm_client.metadata_get_typed(ts_list=[metadata.tsuid])[metadata.tsuid]
 
         for md in result:
             # Converts MDType

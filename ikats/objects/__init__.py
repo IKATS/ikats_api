@@ -22,5 +22,6 @@ from ikats.objects.dataset_ import Dataset
 from ikats.objects.operator_ import InOutParam, Operator, RunOp
 from ikats.objects.metadata_ import Metadata
 from ikats.objects.timeseries_ import Timeseries
+from ikats.objects.table_ import Table
 
 __path__ = extend_path(__path__, __name__)

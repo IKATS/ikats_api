@@ -18,8 +18,9 @@ limitations under the License.
 import mimetypes
 from enum import Enum
 
-from ikats.exceptions import (IkatsClientError, IkatsInputError,
-                              IkatsNotFoundError, IkatsServerError)
+from ikats.exceptions import (IkatsClientError, IkatsConflictError,
+                              IkatsInputError, IkatsNotFoundError,
+                              IkatsServerError)
 from ikats.lib import check_type
 from ikats.objects.session_ import IkatsSession
 
@@ -377,6 +378,20 @@ def is_404(response, msg):
     """
     if response.status_code == 404:
         raise IkatsNotFoundError(msg)
+
+
+def is_409(response, msg):
+    """
+    Detects a 409 HTTP error code.
+
+    :param response: response of the request
+    :param msg: msg to display in case of match
+
+    :type response: RestClientResponse
+    :type msg: str
+    """
+    if response.status_code == 409:
+        raise IkatsConflictError(msg)
 
 
 def is_4xx(response, msg):

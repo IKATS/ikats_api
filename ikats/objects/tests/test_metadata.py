@@ -19,8 +19,8 @@ limitations under the License.
 from unittest import TestCase
 
 from ikats.api import IkatsAPI
-from ikats.lib import MDType
 from ikats.exceptions import IkatsNotFoundError
+from ikats.lib import MDType
 from ikats.tests.lib import delete_ts_if_exists
 
 

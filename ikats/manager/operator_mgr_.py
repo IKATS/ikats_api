@@ -20,7 +20,7 @@ from ikats.client.catalog_stub import CatalogStub
 from ikats.client.datamodel_client import DatamodelClient
 from ikats.client.datamodel_stub import DatamodelStub
 from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
-from ikats.objects.operator_ import InOutParam, Operator
+from ikats.objects import InOutParam, Operator
 
 
 def merge_json_to_op(op, json):

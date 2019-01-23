@@ -15,14 +15,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-from ikats.client import is_404
 from ikats.client.datamodel_client import DatamodelClient
 from ikats.client.datamodel_stub import DatamodelStub
-from ikats.exceptions import IkatsConflictError, IkatsException, IkatsInputError
+from ikats.exceptions import (IkatsConflictError, IkatsException,
+                              IkatsInputError, IkatsNotFoundError)
 from ikats.lib import check_is_valid_ds_name, check_type
 from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
-from ikats.objects.dataset_ import Dataset
-from ikats.objects.timeseries_ import Timeseries
+from ikats.objects import Dataset, Timeseries
 
 
 class IkatsDatasetMgr(IkatsGenericApiEndPoint):
@@ -33,9 +32,9 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.api.emulate:
-            self.client = DatamodelStub(session=self.api.session)
+            self.dm_client = DatamodelStub(session=self.api.session)
         else:
-            self.client = DatamodelClient(session=self.api.session)
+            self.dm_client = DatamodelClient(session=self.api.session)
 
     def new(self, name=None, desc=None, ts=None):
         """
@@ -54,10 +53,12 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
 
         :raises IkatsConflictError: if *name* already present in database
         """
-        ds_list = self.client.dataset_list()
-        if [x for x in ds_list if x['name'] == name]:
-            raise IkatsConflictError("The dataset name already exists in database, use 'get' method instead")
-        return Dataset(api=self.api, name=name, desc=desc, ts=ts)
+        try:
+            self.dm_client.dataset_read(name=name)
+        except (IkatsNotFoundError, TypeError):
+            # Type error occur when name is None
+            return Dataset(api=self.api, name=name, desc=desc, ts=ts)
+        raise IkatsConflictError("Dataset already exist. Try using `get()` method")
 
     def save(self, ds, raise_exception=True):
         """
@@ -87,7 +88,7 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
                 raise IkatsInputError("TS %s doesn't have a TSUID" % ts.fid)
 
         try:
-            self.client.dataset_create(
+            self.dm_client.dataset_create(
                 name=ds.name,
                 description=ds.desc,
                 ts=[x.tsuid for x in ds.ts])
@@ -113,7 +114,7 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         """
         check_type(value=name, allowed_types=str, var_name="name", raise_exception=True)
 
-        result = self.client.dataset_read(name)
+        result = self.dm_client.dataset_read(name)
         ts = [Timeseries(tsuid=x['tsuid'], fid=x['funcId'], api=self.api) for x in result.get('ts_list', [])]
         description = result.get("description", "")
         return Dataset(api=self.api, name=name, desc=description, ts=ts)
@@ -134,7 +135,7 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         """
         check_type(value=dataset, allowed_types=Dataset, var_name="dataset", raise_exception=True)
 
-        result = self.client.dataset_read(dataset.name)
+        result = self.dm_client.dataset_read(dataset.name)
         ts = [Timeseries(tsuid=x['tsuid'], fid=x['funcId'], api=self.api) for x in result.get('ts_list', [])]
         return ts
 
@@ -168,7 +169,7 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         check_is_valid_ds_name(value=name, raise_exception=True)
 
         try:
-            self.client.dataset_delete(name=name, deep=deep)
+            self.dm_client.dataset_delete(name=name, deep=deep)
         except IkatsException:
             if raise_exception:
                 raise
@@ -183,4 +184,4 @@ class IkatsDatasetMgr(IkatsGenericApiEndPoint):
         :rtype: list of Dataset
         """
 
-        return [Dataset(name=x["name"], desc=x["description"], api=self.api) for x in self.client.dataset_list()]
+        return [Dataset(name=x["name"], desc=x["description"], api=self.api) for x in self.dm_client.dataset_list()]

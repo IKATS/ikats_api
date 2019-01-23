@@ -24,9 +24,10 @@ from ikats.client.opentsdb_client import OpenTSDBClient
 from ikats.client.opentsdb_stub import OpenTSDBStub
 from ikats.exceptions import (IkatsConflictError, IkatsException,
                               IkatsNotFoundError)
-from ikats.lib import check_is_fid_valid, check_is_valid_epoch, check_type, MDType
+from ikats.lib import (MDType, check_is_fid_valid, check_is_valid_epoch,
+                       check_type)
 from ikats.manager.generic_mgr_ import IkatsGenericApiEndPoint
-from ikats.objects.timeseries_ import Timeseries
+from ikats.objects import Timeseries
 
 NON_INHERITABLE_PATTERN = re.compile("^qual(.)*|ikats(.)*|funcId")
 

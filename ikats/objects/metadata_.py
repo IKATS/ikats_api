@@ -16,7 +16,7 @@ limitations under the License.
 
 """
 from ikats.exceptions import IkatsNotFoundError
-from ikats.lib import check_type, MDType
+from ikats.lib import MDType, check_type
 from ikats.objects.generic_ import IkatsObject
 
 

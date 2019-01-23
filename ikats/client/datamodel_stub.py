@@ -142,19 +142,19 @@ class DatamodelStub(DatamodelClient, metaclass=Singleton):
     def search_functional_identifiers(self, criterion_type, criteria_list):
         raise NotImplementedError()
 
-    def create_table(self, data):
+    def table_create(self, data):
         self.db_table.append(data)
 
-    def list_tables(self, name=None, strict=True):
+    def table_list(self, name=None, strict=True):
         return self.db_table
 
-    def read_table(self, name):
+    def table_read(self, name):
         try:
             return [x for x in self.db_table if x['name'] == name][0]
         except IndexError:
             raise IkatsNotFoundError()
 
-    def delete_table(self, name):
+    def table_delete(self, name):
         self.db_table = [x for x in self.db_table if x['name'] != name]
 
     def ts_delete(self, tsuid, raise_exception=True):
