@@ -25,6 +25,9 @@ from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestMetadata(TestCase):
+    """
+    Test Metadata object
+    """
 
     def test_types(self):
         """
@@ -71,6 +74,9 @@ class TestMetadata(TestCase):
         ts.delete()
 
     def test_nominal(self):
+        """
+        Nominal use case for Metadata from creation to deletion
+        """
         # Init
         api = IkatsAPI()
         delete_ts_if_exists(fid="MyTS")

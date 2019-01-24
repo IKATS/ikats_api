@@ -24,6 +24,9 @@ from ikats.objects import InOutParam
 
 
 class TestOperator(TestCase):
+    """
+    Test Operator object
+    """
     def test_nominal(self):
         """
         Get an Operator instance

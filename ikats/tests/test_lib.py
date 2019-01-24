@@ -23,7 +23,13 @@ from ikats.lib import (check_is_fid_valid, check_is_valid_ds_name,
 
 
 class TestUtils(TestCase):
+    """
+    Common library tests
+    """
     def test_check_type(self):
+        """
+        Test check_type function
+        """
 
         # Good types
         self.assertTrue(check_type(value=None, allowed_types=[None], var_name="my_None"))
@@ -43,6 +49,9 @@ class TestUtils(TestCase):
             check_type(value="text", allowed_types=[int, list], var_name="my_str")
 
     def test_check_is_valid_epoch(self):
+        """
+        Test check_is_valid_epoch function
+        """
 
         # Value is not an int
         value = "abc"
@@ -60,7 +69,11 @@ class TestUtils(TestCase):
         value = 123
         self.assertTrue(check_is_valid_epoch(value=value, raise_exception=False))
 
+    # noinspection PyTypeChecker
     def test_check_is_valid_ds_name(self):
+        """
+        Test check_is_valid_ds_name function
+        """
 
         # DS name not a str
         ds_name = 123
@@ -90,7 +103,11 @@ class TestUtils(TestCase):
         ds_name = "azerty"
         self.assertTrue(check_is_valid_ds_name(value=ds_name, raise_exception=False))
 
+    # noinspection PyTypeChecker
     def test_check_is_fid_valid(self):
+        """
+        Test check_is_fid_valid function
+        """
 
         # FID name not a str
         fid_value = 123

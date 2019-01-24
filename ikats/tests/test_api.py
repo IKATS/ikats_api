@@ -25,13 +25,22 @@ from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestApi(TestCase):
+    """
+    Main API tests
+    """
     def test_ds(self):
+        """
+        Tests main operations on Datasets
+        """
         # DS list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         ds_list = api.ds.list()
         self.assertLess(0, len(ds_list))
 
     def test_ts(self):
+        """
+        Tests main operations on Timeseries
+        """
         # TS list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         ts_list = api.ts.list()
@@ -51,6 +60,9 @@ class TestApi(TestCase):
         self.assertEqual(my_fid, new_fid)
 
     def test_op(self):
+        """
+        Tests main operations on Operators
+        """
         # OP list
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
         op_list = api.op.list()
@@ -64,6 +76,9 @@ class TestApi(TestCase):
             api.op.results(pid="unknown")
 
     def test_table(self):
+        """
+        Tests main operations on Tables
+        """
         api = IkatsAPI(host="http://localhost", port=80, emulate=False)
 
         tables_list = api.table.list()

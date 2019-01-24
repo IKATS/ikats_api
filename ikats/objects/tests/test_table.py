@@ -25,6 +25,9 @@ from ikats.exceptions import IkatsConflictError, IkatsNotFoundError
 
 
 class TestTable(TestCase):
+    """
+    Test Table object
+    """
     def test_nominal(self):
         """
         Creation of a Table instance
@@ -80,12 +83,15 @@ class TestTable(TestCase):
         self.assertFalse(table.delete(raise_exception=False))
 
     def test_bad_json(self):
+        """
+        Check JSON checker
+        """
         api = IkatsAPI()
         table = api.table.new()
         name = "my_table"
 
         data = {
-            "unknownfield": {
+            "unknown field": {
                 "name": name,
                 "desc": "table description",
                 "title": "Table Title"
@@ -99,6 +105,9 @@ class TestTable(TestCase):
             table.is_json_valid(data)
 
     def test_exception(self):
+        """
+        Tests exception that can be raised
+        """
         api = IkatsAPI()
         name = "my_table"
 

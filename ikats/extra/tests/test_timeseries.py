@@ -22,7 +22,13 @@ from ikats.extra.timeseries import gen_random_ts
 
 
 class TestDataset(TestCase):
+    """
+    Test extra functions
+    """
     def test_gen_random_ts(self):
+        """
+        test gen_random_ts function
+        """
         sd = 1000000000000
         ed = 1000000010000
         nb_points = 10

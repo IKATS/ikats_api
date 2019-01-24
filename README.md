@@ -7,9 +7,13 @@ This repository contains the IKATS python api used by core developers and operat
 - From PyPI: `pip install ikats`
 - From setup.py: `python3 setup.py install`
 
-## Test
+## Tests
 
 You can run the full test campaign with `python3 setup.py nosetests`
+A **coverage report** is also generated and available at `cover/index.html`
+
+For code quality, IKATS uses `pylint`. 
+You can run it with `pylint --rcfile pylint.rc ikats --ignore="tests"`
 
 ## Content
 

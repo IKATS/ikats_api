@@ -25,6 +25,9 @@ from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestDataset(TestCase):
+    """
+    Test Dataset object
+    """
     def test_new(self):
         """
         Creation of a Dataset instance
@@ -53,6 +56,9 @@ class TestDataset(TestCase):
         self.assertEqual("Dataset %s" % ds.name, repr(ds))
 
     def test_get(self):
+        """
+        Get an existing dataset
+        """
         api = IkatsAPI()
 
         # Empty
@@ -61,6 +67,9 @@ class TestDataset(TestCase):
         self.assertEqual(13, len(ds.ts))
 
     def test_add(self):
+        """
+        Add new TS to dataset
+        """
         api = IkatsAPI()
         ts_list1 = [api.ts.new() for _ in range(10)]
         ts_list2 = [api.ts.new() for _ in range(11, 20)]
@@ -85,6 +94,9 @@ class TestDataset(TestCase):
         self.assertEqual("42", ds3.ts[-1].tsuid)
 
     def test_bad_set(self):
+        """
+        Non-nominal usage
+        """
         api = IkatsAPI()
         ds = api.ds.new()
 
@@ -95,15 +107,18 @@ class TestDataset(TestCase):
                 ds.desc = value
 
     def test_create_delete(self):
+        """
+        Complete use case from creation to deletion
+        """
 
         # Cleanup
         api = IkatsAPI()
         api.ds.delete(name="DS_TEST", deep=True, raise_exception=False)
-        for x in range(10):
-            delete_ts_if_exists(fid="FID_TEST_%s" % x)
+        for i in range(10):
+            delete_ts_if_exists(fid="FID_TEST_%s" % i)
 
         # Setup
-        ts_list1 = [api.ts.new(fid="FID_TEST_%s" % x) for x in range(10)]
+        ts_list1 = [api.ts.new(fid="FID_TEST_%s" % i) for i in range(10)]
         ds1 = api.ds.new(name="DS_TEST", desc="my description", ts=ts_list1)
 
         # Test deletion with unknown dataset

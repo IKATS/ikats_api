@@ -24,7 +24,13 @@ from ikats.objects.session_ import IkatsSession
 
 
 class TestSession(TestCase):
-    def test_new(self):
+    """
+    Tests the session class
+    """
+    def test_nominal(self):
+        """
+        Test Session nominal usages
+        """
         # Default session
         session = IkatsSession()
         self.assertEqual("http://localhost", session.host)
@@ -49,6 +55,9 @@ class TestSession(TestCase):
         self.assertEqual(80, session.port)
 
     def test_malformed_host(self):
+        """
+        Test Session non-nominal usages
+        """
         # Space in URL
         with self.assertRaises(ValueError):
             IkatsSession(host="space in url")

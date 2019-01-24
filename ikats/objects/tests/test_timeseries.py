@@ -27,6 +27,9 @@ from ikats.tests.lib import delete_ts_if_exists
 
 
 class TestTimeseries(TestCase):
+    """
+    Test Timeseries object
+    """
     ts_to_delete = []
 
     def test_new_local(self):
@@ -44,7 +47,10 @@ class TestTimeseries(TestCase):
         self.assertEqual(0, len(ts.data))
         self.assertEqual(0, len(ts))
 
-    def test_from_scratch(self):
+    def test_nominal(self):
+        """
+        Nominal use-case from creation to deletion
+        """
         api = IkatsAPI()
         delete_ts_if_exists("TEST_TS")
 
@@ -118,6 +124,9 @@ class TestTimeseries(TestCase):
         self.assertTrue(api.ts.delete(ts=ts2, raise_exception=False))
 
     def test_inherit(self):
+        """
+        Test inheritance
+        """
         fid = "TEST_TS"
         fid2 = "TEST_TS2"
 
