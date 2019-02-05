@@ -104,6 +104,7 @@ class TestTable(TestCase):
         with self.assertRaises(SchemaError):
             table.is_json_valid(data)
 
+    # TODO: Ce test ne passe pas chez moi : à cause de self.assertEqual(0, len(api.table.list())) . J'obtiens 4 !
     def test_exception(self):
         """
         Tests exception that can be raised

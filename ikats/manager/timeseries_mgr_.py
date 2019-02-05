@@ -307,12 +307,11 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
             | AND
             | flight_phase == 8
 
+        :param constraint: constraint definition
+        :type constraint: dict
 
         :returns: list of TSUID matching the constraints
         :rtype: dict
-
-        :param constraint: constraint definition
-        :type constraint: dict
 
         :raises TypeError: if *constraint* is not a dict
         """

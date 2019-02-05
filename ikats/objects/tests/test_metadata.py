@@ -39,6 +39,7 @@ class TestMetadata(TestCase):
         delete_ts_if_exists("MyTS")
         ts = api.ts.new(fid="MyTS")
 
+        # TODO : Copié-collé redondant
         # Provide a number, get a string
         ts.metadata.set(name="myMD", value=42, dtype=MDType.STRING)
         self.assertEqual("42", ts.metadata.get(name="myMD"))
@@ -56,11 +57,13 @@ class TestMetadata(TestCase):
         self.assertEqual(int, type(ts.metadata.get(name="myMD")))
         self.assertEqual(MDType.NUMBER, ts.metadata.get_type(name="myMD"))
 
-        # Provide an float as string, get a float
+        # Provide a float as string, get a float
         ts.metadata.set(name="myMD", value="42.5", dtype=MDType.NUMBER)
         self.assertEqual(float, type(ts.metadata.get(name="myMD")))
         self.assertEqual(MDType.NUMBER, ts.metadata.get_type(name="myMD"))
 
+        # TODO : Ca marche aussi, mais pourquoi ne pas avoir mis self.assertEqual(42, type(ts.metadata.get(name="myMD"))
+        # TODO : pour effectuer la comparaison comme ailleurs ?
         # Provide a date as string, get an int
         ts.metadata.set(name="myMD", value="42", dtype=MDType.DATE)
         self.assertEqual(42, ts.metadata.get(name="myMD"))
@@ -105,6 +108,7 @@ class TestMetadata(TestCase):
         # Save it
         self.assertTrue(ts_1.metadata.save())
 
+        # TODO: Après le .save() , le premier objet est synchronisé avec la BD
         # MD still present in second object (first not synced with database)
         self.assertEqual("42", ts_2.metadata.get("myMD"))
 

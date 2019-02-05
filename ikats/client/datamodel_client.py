@@ -741,12 +741,11 @@ class DatamodelClient(GenericClient):
             | AND
             | flight_phase == 8
 
+        :param constraint: constraint definition
+        :type constraint: dict
 
         :returns: list of TSUID matching the constraints
         :rtype: dict
-
-        :param constraint: constraint definition
-        :type constraint: dict
 
         :raises TypeError: if *constraint* is not a dict
         """
@@ -772,10 +771,12 @@ class DatamodelClient(GenericClient):
 
         :param tsuid: one tsuid value
         :type tsuid: str
+
         :returns: retrieved functional identifier resource
         :rtype: dict having following keys defined:
           - 'tsuid'
           - and 'funcId'
+
         :raises exception:
             - TypeError: if tsuid is not a str OR status_code 400 (bad request) OR unexpected http status_code
             - ValueError: mismatched result: http status_code 404:  not found
@@ -831,10 +832,12 @@ class DatamodelClient(GenericClient):
           ex: 'tsuids' or 'funcIds'
         :param criteria_list: non empty list of possible values for the criterion type
         :type criteria_list: list of str
+
         :returns: matching list of functional identifier resources: dict having following keys defined:
             - 'tsuid',
             - and 'funcId'
         :rtype: list of dict
+
         :raises exception:
           - TypeError: if unexpected arguments OR status_code 400 (bad request) OR unexpected http status_code
           - ValueError: mismatched result: http status_code 404:  not found
@@ -855,6 +858,7 @@ class DatamodelClient(GenericClient):
 
         return response.json
 
+    # TODO : Doc
     def table_create(self, data):
         """
         Create a table
@@ -863,6 +867,7 @@ class DatamodelClient(GenericClient):
         :type data: dict
 
         :returns: the name of the created table
+        :rtype:
 
         :raises IkatsInputError: for any error present in the inputs
         :raises IkatsConflictError: if table already exist
@@ -945,7 +950,6 @@ class DatamodelClient(GenericClient):
 
         :param name: the name of the table to delete
         :type name: str
-
         """
 
         response = self.send(root_url=self.session.dm_url + self.root_url,
@@ -975,7 +979,6 @@ class DatamodelClient(GenericClient):
 
         :returns: the action status (True if deleted, False otherwise)
         :rtype: bool
-
 
         :raises TypeError: if *tsuid* is not a str
         :raises IkatsNotFoundError: if *tsuid* is not found on server
@@ -1012,11 +1015,16 @@ class DatamodelClient(GenericClient):
             result = False
         return result
 
+    # TODO : Doc
     def pid_results(self, pid):
         """
         Get a list of the results (RID) associated to PID
+
         :param pid: process ID to get
+        :type pid:
+
         :return: the result
+        :rtype:
         """
 
         response = self.send(root_url=self.session.dm_url + self.root_url,
@@ -1031,11 +1039,16 @@ class DatamodelClient(GenericClient):
 
         return response.data
 
+    # TODO : Doc
     def rid_get(self, rid):
         """
         Get a specific result
+
         :param rid: result ID to get
+        :type rid:
+
         :return: the result
+        :rtype:
         """
 
         response = self.send(root_url=self.session.dm_url + self.root_url,

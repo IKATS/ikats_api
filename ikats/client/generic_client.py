@@ -28,6 +28,7 @@ from ikats.objects.session_ import IkatsSession
 def close_files(json):
     """
     Closes the files opened with build_json_files method
+
     :param json: item built using build_json_files method
     :type json: dict or list
     """
@@ -410,7 +411,7 @@ def is_4xx(response, msg):
             msg = msg.format(**{"code": response.status_code})
         raise IkatsClientError(msg)
 
-
+# TODO : Doc
 def is_5xx(response, msg):
     """
     Detects a 5XX HTTP error code.
@@ -419,6 +420,8 @@ def is_5xx(response, msg):
     :param response:
     :param msg:
 
+    :type response:
+    :type msg:
     """
     if str(response.status_code).startswith('5'):
         if "{code}" in msg:

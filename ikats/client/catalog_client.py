@@ -58,9 +58,13 @@ class CatalogClient(GenericClient):
         is_5xx(response, "Unexpected server error : {code}")
         return []
 
+    # TODO : Doc
     def get_implementation(self, name):
         """
         Get the implementations matching the name from database
+
+        :param name:
+        :type name:
 
         :returns: the dict of implementation
         :rtype: dict

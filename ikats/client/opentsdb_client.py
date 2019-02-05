@@ -98,7 +98,6 @@ class OpenTSDBClient(GenericClient):
         return the effective imported number of points for a given tsuid
 
         :param tsuid: name of the metric
-
         :type tsuid: str
 
         :returns: the imported number of points
@@ -186,12 +185,16 @@ class OpenTSDBClient(GenericClient):
 
         return metric, tags
 
+    # TODO : Doc
     def assign_metric(self, metric, tags):
         """
         From a defined metric and tags, generate the corresponding TSUID
 
         :param metric:
         :param tags:
+
+        :type metric:
+        :type tags:
 
         :returns: the TSUID
         :rtype: str

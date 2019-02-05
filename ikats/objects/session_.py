@@ -17,7 +17,6 @@ limitations under the License.
 """
 import logging
 import re
-
 import requests
 
 from ikats.lib import check_type
@@ -25,8 +24,8 @@ from ikats.lib import check_type
 
 class IkatsSession:
     """
-    IkatsSession is the connector to IKATS resources
-    It provides a way for other IKATS class to know where the data are
+    IkatsSession is the connector to IKATS resources.
+    It provides a way for other IKATS class to know where the data are.
     The IKATS entry point shall be set to the main GUI URL and port.
     """
 

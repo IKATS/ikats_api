@@ -19,7 +19,6 @@ limitations under the License.
 from ikats import IkatsAPI
 from ikats.exceptions import IkatsNotFoundError
 
-
 def delete_ts_if_exists(fid):
     """
     Delete a TS if it exists
@@ -27,6 +26,7 @@ def delete_ts_if_exists(fid):
     Useful to prepare environments
 
     :param fid: FID of the TS to delete
+    :type fid: str
     """
     api = IkatsAPI()
 

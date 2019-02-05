@@ -85,6 +85,7 @@ class Timeseries(IkatsObject):
     def tsuid(self):
         """
         Getter for tsuid
+        :rtype: str
         """
         return self.__tsuid
 
@@ -105,14 +106,12 @@ class Timeseries(IkatsObject):
     def fid(self):
         """
         Getter for fid
+        :rtype: str
         """
         return self.__fid
 
     @fid.setter
     def fid(self, value):
-        """
-        Setter for fid
-        """
         if value is not None:
             check_is_fid_valid(fid=value, raise_exception=True)
             self.__fid = value
@@ -141,16 +140,16 @@ class Timeseries(IkatsObject):
 
     def save(self, parent=None, generate_metadata=False, raise_exception=True):
         """
-        Import timeseries data points to database or update an existing timeseries with new points
+        Import time series data points to database or update an existing time series with new points
 
         if *generate_metadata* is set or if no TSUID is present in *ts* object,
         the *ikats_start_date*, *ikats_end_date* and *qual_nb_points* will be
         overwritten by the first point date, last point date and number of points in *ts.data*
 
-        *parent* is the original timeseries where metadata shall be taken from
+        *parent* is the original time series where metadata shall be taken from
         (except intrinsic ones, eg. *qual_nb_points*)
 
-        If the timeseries is a new one (object has no tsuid defined), the computation of the metadata is forced
+        If the time series is a new one (object has no tsuid defined), the computation of the metadata is forced
 
         Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
@@ -164,7 +163,6 @@ class Timeseries(IkatsObject):
 
         :returns: the status of the action
         :rtype: bool
-
         """
         result = self.api.ts.save(ts=self, generate_metadata=generate_metadata, parent=parent,
                                   raise_exception=raise_exception)
@@ -174,10 +172,8 @@ class Timeseries(IkatsObject):
 
     def delete(self, raise_exception=True):
         """
-        Delete the data corresponding to a *ts* object and all associated metadata
-
-        Note that if timeseries belongs to a dataset it will not be removed
-
+        Delete the data corresponding to a *ts* object and all associated metadata.
+        Note that if time series belongs to a dataset, it will not be removed.
         Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
         :param raise_exception: (optional) Indicates if IKATS exceptions shall be raised (True, default) or not (False)
@@ -192,6 +188,7 @@ class Timeseries(IkatsObject):
         """
         return self.api.ts.delete(ts=self, raise_exception=raise_exception)
 
+    # TODO: Doc
     def fetch(self, sd=None, ed=None):
         """
         Retrieve the data corresponding to a Timeseries object as a numpy array
@@ -206,6 +203,9 @@ class Timeseries(IkatsObject):
 
         :type sd: int or None
         :type ed: int or None
+
+        :returns:
+        :rtype:
 
         :raises TypeError: if *ts* is not a Timeseries object
         :raises TypeError: if *sd* is not an int

@@ -34,6 +34,8 @@ def check_type(value, allowed_types, var_name="variable", raise_exception=True):
 
     :returns: Check status depending on the requested mode (raise or bool)
     :rtype: bool
+
+    :raises TypeError: if value doesn't belong to the allowed types
     """
 
     # Convert single type to a list of one type
@@ -53,9 +55,10 @@ def check_is_fid_valid(fid, raise_exception=True):
     """
     Check if FID is well formed
 
-    :param fid:
-    :type fid: str
+    :param fid: functional ID
     :param raise_exception: Indicate if an exception shall be raised (True, default) or not (False)
+
+    :type fid: str
     :type raise_exception: bool
 
     :returns: the status of the check
@@ -89,6 +92,8 @@ def check_is_valid_epoch(value, raise_exception=True):
 
     :param value: value to check
     :param raise_exception: Indicate if an exception shall be raised (True, default) or not (False)
+
+    :type value: str
     :type raise_exception: bool
 
     :returns: the status of the check

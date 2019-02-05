@@ -50,16 +50,16 @@ class Table(IkatsObject):
     """
     Table class
     """
-
+    # TODO: Doc
     def __init__(self, api, name=None, data=None):
         """
         See props for members description
 
         :param api: see IkatsObject
-
         :param name: Name of the Table
         :param data: Data composing the Table (as list of list)
 
+        :type api:
         :type name: str or None
         :type data: dict
         """
@@ -74,10 +74,12 @@ class Table(IkatsObject):
         self.name = name
         self.data = data
 
+    # TODO: Doc
     @property
     def name(self):
         """
         Name of the dataset
+        :rtype:
         """
         return self.__name
 
@@ -168,7 +170,6 @@ class Table(IkatsObject):
         Returns a boolean status of the action (True means "OK", False means "errors occurred")
 
         :param raise_exception: Indicates if exceptions shall be raised (True, default) or not (False)
-
         :type raise_exception: bool
 
         :returns: the status of the action
@@ -181,9 +182,9 @@ class Table(IkatsObject):
 
     def extract(self, obs_id, items):
         """
-        Extract information from a table and format the output as a dict of dict
+        Extract information from a table and format the output as a dict of dict.
         The first key will be the obs_id values taken from the table_content.
-        The sub keys will be the items
+        The sub keys will be the items.
 
         :param obs_id: Column name used as primary key
         :param items: list of other columns to extract

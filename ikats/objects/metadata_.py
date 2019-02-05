@@ -23,17 +23,15 @@ from ikats.objects.generic_ import IkatsObject
 class Metadata(IkatsObject):
     """
     Collection of Metadata information associated to a TSUID
-    No data are fetch directly (lazy mode)
+    No data are fetched directly (lazy mode)
     """
-
+    # TODO: doc
     def __init__(self, api, tsuid=None):
         """
-        :returns:
-
         :param api: see IkatsObject
-
         :param tsuid: TS identifier to link to these metadata
 
+        :type api:
         :type tsuid: str
         """
         super().__init__(api)
@@ -48,14 +46,13 @@ class Metadata(IkatsObject):
     @property
     def data(self):
         """
-        Raw data object containing the dict of metadata
-        Format is
+        Raw data object containing the dict of metadata. Format is:
         self.__data["metadata_name"] = {"value": "x", "dtype": "y", "deleted": False}
         'deleted' flag is used to mark metadata as deleted and trigger the deletion on save action
         :rtype: dict
         """
         return self.__data
-
+    # TODO: Ce pass est-il un oubli ?
     @data.setter
     def data(self, value):
         pass
@@ -76,7 +73,7 @@ class Metadata(IkatsObject):
     def set(self, name, value, dtype=None):
         """
         Create or update a metadata *locally*
-        To synchronize with database, use
+        To synchronize with database, use #TODO: .save() ?
 
         :param name: name of the metadata to set
         :param value: value of the metadata
@@ -110,10 +107,10 @@ class Metadata(IkatsObject):
         If cache is empty, fetch the data from database
 
         :param name: name of the metadata to get
-
         :type name: str
 
-        :returns: the value. the type depends on defined type
+        :returns: the value
+        :rtype: the type depends on defined type
 
         :raises IkatsNotFoundError: if metadata doesn't exist
         """
