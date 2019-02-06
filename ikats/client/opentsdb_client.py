@@ -185,20 +185,18 @@ class OpenTSDBClient(GenericClient):
 
         return metric, tags
 
-    # TODO : Doc
     def assign_metric(self, metric, tags):
         """
         From a defined metric and tags, generate the corresponding TSUID
 
-        :param metric:
-        :param tags:
+        :param metric: OpenTSDB metric
+        :param tags: OpenTSDB dict of tags (keys and values)
 
-        :type metric:
-        :type tags:
+        :type metric: str
+        :type tags: dict
 
         :returns: the TSUID
         :rtype: str
-
         """
 
         response = self.send(root_url=self.session.tsdb_url,

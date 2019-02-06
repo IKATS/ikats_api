@@ -50,7 +50,6 @@ class Table(IkatsObject):
     """
     Table class
     """
-    # TODO: Doc
     def __init__(self, api, name=None, data=None):
         """
         See props for members description
@@ -59,7 +58,7 @@ class Table(IkatsObject):
         :param name: Name of the Table
         :param data: Data composing the Table (as list of list)
 
-        :type api:
+        :type api: IkatsAPI
         :type name: str or None
         :type data: dict
         """
@@ -74,12 +73,11 @@ class Table(IkatsObject):
         self.name = name
         self.data = data
 
-    # TODO: Doc
     @property
     def name(self):
         """
         Name of the dataset
-        :rtype:
+        :rtype: str
         """
         return self.__name
 

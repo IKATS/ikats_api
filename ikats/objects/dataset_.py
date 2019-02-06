@@ -25,7 +25,6 @@ class Dataset(IkatsObject):
     """
     Dataset class composed of information related to a single Dataset
     """
-    # TODO: doc
     def __init__(self, api, name=None, desc=None, ts=None):
         """
         See props for members description
@@ -35,7 +34,7 @@ class Dataset(IkatsObject):
         :param desc: Description of the Dataset
         :param ts: List of Timeseries objects
 
-        :type api:
+        :type api: IkatsAPI
         :type name: str or None
         :type desc: str or None
         :type ts: list of Timeseries
@@ -138,12 +137,11 @@ class Dataset(IkatsObject):
                                ts=self.ts + other.ts)
 
     def add_ts(self, ts):
-        # TODO : Compléter la docstring
         """
         Append a Timeseries to this Dataset (but no save is performed)
 
-        :param ts:
-        :type ts:
+        :param ts: Timeseries identifier or object to append to TS list of this Dataset
+        :type ts: str or Timeseries
 
         """
         if isinstance(ts, str):

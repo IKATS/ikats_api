@@ -39,14 +39,13 @@ class TestMetadata(TestCase):
         delete_ts_if_exists("MyTS")
         ts = api.ts.new(fid="MyTS")
 
-        # TODO : Copié-collé redondant
         # Provide a number, get a string
         ts.metadata.set(name="myMD", value=42, dtype=MDType.STRING)
         self.assertEqual("42", ts.metadata.get(name="myMD"))
         self.assertEqual(str, type(ts.metadata.get(name="myMD")))
         self.assertEqual(MDType.STRING, ts.metadata.get_type(name="myMD"))
 
-        # Provide a number, get a string (default)
+        # Provide a number, get a string (default to STRING if not provided)
         ts.metadata.set(name="myMD", value=42)
         self.assertEqual("42", ts.metadata.get(name="myMD"))
         self.assertEqual(str, type(ts.metadata.get(name="myMD")))
@@ -62,14 +61,12 @@ class TestMetadata(TestCase):
         self.assertEqual(float, type(ts.metadata.get(name="myMD")))
         self.assertEqual(MDType.NUMBER, ts.metadata.get_type(name="myMD"))
 
-        # TODO : Ca marche aussi, mais pourquoi ne pas avoir mis self.assertEqual(42, type(ts.metadata.get(name="myMD"))
-        # TODO : pour effectuer la comparaison comme ailleurs ?
-        # Provide a date as string, get an int
+        # Provide a date as string, get an int (corresponding to a date)
         ts.metadata.set(name="myMD", value="42", dtype=MDType.DATE)
         self.assertEqual(42, ts.metadata.get(name="myMD"))
         self.assertEqual(MDType.DATE, ts.metadata.get_type(name="myMD"))
 
-        # Provide a date as int, get an int
+        # Provide a date as int, get an int (corresponding to a date)
         ts.metadata.set(name="myMD", value=1564856, dtype=MDType.DATE)
         self.assertEqual(1564856, ts.metadata.get(name="myMD"))
         self.assertEqual(MDType.DATE, ts.metadata.get_type(name="myMD"))
@@ -108,8 +105,7 @@ class TestMetadata(TestCase):
         # Save it
         self.assertTrue(ts_1.metadata.save())
 
-        # TODO: Après le .save() , le premier objet est synchronisé avec la BD
-        # MD still present in second object (first not synced with database)
+        # MD still present in second object (first object synced with database)
         self.assertEqual("42", ts_2.metadata.get("myMD"))
 
         # Get last updates

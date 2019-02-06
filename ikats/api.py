@@ -33,20 +33,19 @@ class IkatsAPI:
 
         Let emulate to False since it is not fully implemented
 
-        # TODO: Compléter avec la description et les types de chaque paramètre
-        :param host:
-        :param port:
-        :param sc:
-        :param name:
-        :param session:
-        :param emulate:
+        :param host: URL of the remote IKATS server
+        :param port: Port of the remote IKATS server
+        :param sc: Spark context/session to use with API
+        :param name: name of this Session
+        :param session: Ikats Session object
+        :param emulate: Emulate the backend instead of using the real one (for debug purposes only)
         
-        :type host:
-        :type port:
-        :type sc:
-        :type name:
-        :type session:
-        :type emulate:
+        :type host: str
+        :type port: str or int
+        :type sc: SparkContext or SparkSession
+        :type name: str
+        :type session: IkatsSession
+        :type emulate: bool
         """
         self.__session = None
         if session is not None:

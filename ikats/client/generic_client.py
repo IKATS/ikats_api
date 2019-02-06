@@ -405,23 +405,27 @@ def is_4xx(response, msg):
 
     :type response: RestClientResponse
     :type msg: str
+
+    :raises IkatsClientError: is response HTTP code is between 400 and 499
     """
     if str(response.status_code).startswith('4'):
         if "{code}" in msg:
             msg = msg.format(**{"code": response.status_code})
         raise IkatsClientError(msg)
 
-# TODO : Doc
+
 def is_5xx(response, msg):
     """
     Detects a 5XX HTTP error code.
     Use "{code}" in msg to use the obtained HTTP code
 
-    :param response:
-    :param msg:
+    :param response: response of the request
+    :param msg: msg to display in case of match
 
-    :type response:
-    :type msg:
+    :type response: RestClientResponse
+    :type msg: str
+
+    :raises IkatsServerError: is response HTTP code is between 500 and 599
     """
     if str(response.status_code).startswith('5'):
         if "{code}" in msg:

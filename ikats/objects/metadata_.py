@@ -25,13 +25,14 @@ class Metadata(IkatsObject):
     Collection of Metadata information associated to a TSUID
     No data are fetched directly (lazy mode)
     """
-    # TODO: doc
     def __init__(self, api, tsuid=None):
         """
+        Constructor
+
         :param api: see IkatsObject
         :param tsuid: TS identifier to link to these metadata
 
-        :type api:
+        :type api: IkatsAPI
         :type tsuid: str
         """
         super().__init__(api)
@@ -52,9 +53,10 @@ class Metadata(IkatsObject):
         :rtype: dict
         """
         return self.__data
-    # TODO: Ce pass est-il un oubli ?
+
     @data.setter
     def data(self, value):
+        # Writing data directly should not be available. Only set/get/delete/fetch actions shall have impact on data
         pass
 
     @property
@@ -73,7 +75,7 @@ class Metadata(IkatsObject):
     def set(self, name, value, dtype=None):
         """
         Create or update a metadata *locally*
-        To synchronize with database, use #TODO: .save() ?
+        To synchronize with database, use `save()` method
 
         :param name: name of the metadata to set
         :param value: value of the metadata
@@ -109,8 +111,8 @@ class Metadata(IkatsObject):
         :param name: name of the metadata to get
         :type name: str
 
-        :returns: the value
-        :rtype: the type depends on defined type
+        :returns: the value. The type depends on defined type
+        :rtype: any
 
         :raises IkatsNotFoundError: if metadata doesn't exist
         """

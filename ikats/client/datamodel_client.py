@@ -858,7 +858,6 @@ class DatamodelClient(GenericClient):
 
         return response.json
 
-    # TODO : Doc
     def table_create(self, data):
         """
         Create a table
@@ -867,7 +866,7 @@ class DatamodelClient(GenericClient):
         :type data: dict
 
         :returns: the name of the created table
-        :rtype:
+        :rtype: str
 
         :raises IkatsInputError: for any error present in the inputs
         :raises IkatsConflictError: if table already exist
@@ -1015,16 +1014,15 @@ class DatamodelClient(GenericClient):
             result = False
         return result
 
-    # TODO : Doc
     def pid_results(self, pid):
         """
         Get a list of the results (RID) associated to PID
 
         :param pid: process ID to get
-        :type pid:
+        :type pid: str or int
 
         :return: the result
-        :rtype:
+        :rtype: list
         """
 
         response = self.send(root_url=self.session.dm_url + self.root_url,
@@ -1039,16 +1037,15 @@ class DatamodelClient(GenericClient):
 
         return response.data
 
-    # TODO : Doc
     def rid_get(self, rid):
         """
         Get a specific result
 
         :param rid: result ID to get
-        :type rid:
+        :type rid: int
 
         :return: the result
-        :rtype:
+        :rtype: dict
         """
 
         response = self.send(root_url=self.session.dm_url + self.root_url,

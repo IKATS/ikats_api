@@ -270,7 +270,7 @@ class IkatsTimeseriesMgr(IkatsGenericApiEndPoint):
 
     def inherit(self, ts, parent):
         """
-        Make a time series inherit of parent's metadata according to a pattern (not all metadata inherited)
+        Make a timeseries inherit of parent's metadata according to a pattern (not all metadata inherited)
 
         :param ts: TS object in IKATS (which will inherit)
         :param parent: TS object in IKATS of inheritance parent

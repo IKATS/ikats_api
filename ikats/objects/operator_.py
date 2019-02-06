@@ -27,16 +27,15 @@ class InOutParam:
     Details about the inputs/outputs/parameters of an operator
     """
 
-    # TODO: Compléter docstring
     def __init__(self, api, json_data=None):
         """
         Constructor
 
-        :param api:
-        :param json_data:
+        :param api: see IkatsObject
+        :param json_data: information provided by catalog to fill this input/parameter/output
 
-        :type api:
-        :type json_data:
+        :type api: IkatsAPI
+        :type json_data: dict
         """
 
         self.__desc = None
@@ -194,7 +193,6 @@ class Operator(IkatsObject):
     Operator handles the static information of an IKATS operator
     """
 
-    # TODO : Docstring
     def __init__(self, api, name=None):
         """
         See props for members description
@@ -202,8 +200,8 @@ class Operator(IkatsObject):
         :param api: see IkatsObject
         :param name: name of the operator to construct
 
-        :type api:
-        :type name:
+        :type api: IkatsAPI
+        :type name: str
         """
         super().__init__(api)
         self.__name = None
@@ -324,13 +322,10 @@ class Operator(IkatsObject):
         check_type(value=value, allowed_types=[str, None], var_name="name", raise_exception=True)
         self.__name = value
 
-    # TODO : doc
     def fetch(self):
         """
         If light content (no parameters/inputs/outputs specified), fetch the missing data
         and update the Operator object
-
-        :rtype:
         """
         if self.name is None:
             raise ValueError("Provide an operator name to fetch")
@@ -355,8 +350,13 @@ class RunOp(Operator):
     """
     Operator class with necessary elements to be runnable
     """
-    # TODO: docstring
     def __init__(self, name):
+        """
+        Constructor
+
+        :param name: name of the operator to run
+        :type name: str
+        """
         super().__init__(name)
         self.__pid = None
         self.__results = None
@@ -374,11 +374,9 @@ class RunOp(Operator):
         check_type(value=value, allowed_types=[int, None], var_name="pid", raise_exception=True)
         self.__pid = value
 
-    # TODO: doc
     def results(self):
         """
-        Reads the results pointers and assign them to thei respective outputs
-        :rtype:
+        Reads the results pointers and assign them to their respective outputs
         """
         if self.pid is None:
             raise ValueError("Provide a PID first")
