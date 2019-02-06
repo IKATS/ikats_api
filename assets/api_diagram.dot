@@ -1,0 +1,71 @@
+digraph G {
+    graph [labelloc = "t" label = "Ikats API objects diagram" splines = false overlap = false rankdir = "LR" size = "15,6" ratio = fill];
+
+    node [style = "filled"]
+
+    subgraph cluster_0 {
+        style = "rounded";
+        color = lightblue;
+        node [style = filled,color = lightblue];
+        IkatsDatasetMgr;
+        IkatsTimeseriesMgr;
+        IkatsMetadataMgr;
+        IkatsOperatorMgr;
+        IkatsTableMgr;
+        label = "Managers";
+    }
+
+    subgraph cluster_1 {
+        style = rounded;
+        color = "#ACE1AF";
+        node [style = filled,color = "#ACE1AF"];
+        DatamodelClient;
+        OpenTSDBClient;
+        CatalogClient;
+        label = "Clients";
+    }
+
+    subgraph cluster_2 {
+        style = rounded;
+        color = "#cdabf3";
+        node [style = filled,color = "#cdabf3"];
+        Dataset;
+        Timeseries -> Metadata;
+        Operator;
+        label = "Objects";
+    }
+
+    subgraph cluster_3 {
+        style = rounded;
+        color = "lightblue";
+        node [style = filled,color = "lightblue"];
+        CatalogServer;
+        DatamodelServer;
+        OpenTSDBServer;
+        label = "IkatsBackend";
+    }
+
+    "IkatsAPI" -> "IkatsDatasetMgr"
+    "IkatsAPI" -> "IkatsTimeseriesMgr"
+    "IkatsAPI" -> "IkatsMetadataMgr"
+    "IkatsAPI" -> "IkatsOperatorMgr"
+    "IkatsAPI" -> "IkatsTableMgr"
+
+    "IkatsDatasetMgr" -> "DatamodelClient" [color = "green"]
+    "IkatsTimeseriesMgr" -> "DatamodelClient" [color = "green"]
+    "IkatsTimeseriesMgr" -> "OpenTSDBClient" [color = "green"]
+    "IkatsMetadataMgr" -> "DatamodelClient" [color = "green"]
+    "IkatsOperatorMgr" -> "DatamodelClient" [color = "green"]
+    "IkatsOperatorMgr" -> "CatalogClient" [color = "green"]
+    "IkatsTableMgr" -> "DatamodelClient" [color = "green"]
+
+    "IkatsDatasetMgr" -> Dataset [color = "purple"]
+    "IkatsTimeseriesMgr" -> Timeseries [color = "purple"]
+    "IkatsMetadataMgr" -> Metadata [color = "purple"]
+    "IkatsOperatorMgr" -> Operator [color = "purple"]
+
+    DatamodelClient -> DatamodelServer
+    OpenTSDBClient -> OpenTSDBServer
+    CatalogClient -> CatalogServer
+
+}
