@@ -65,10 +65,10 @@ class IkatsSession:
         self.port = port
         self.sc = sc
 
-        self.catalog_url = "/python_api"
-        self.engine_url = "/python_api"
-        self.dm_url = "/datamodel-api"
-        self.tsdb_url = "/opentsdb"
+        self.catalog_url = "/pybase"
+        self.engine_url = "/pybase"
+        self.dm_url = "/datamodel"
+        self.tsdb_url = "/tsdb"
 
         self.name = name
         self.log = logging.getLogger(str(self.name))

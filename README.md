@@ -37,12 +37,13 @@ You can run it with `pylint --rcfile pylint.rc ikats --ignore="tests"`
 ### Principles
 
 There are several ways to interact with API:
+
 - from `IkatsAPI`
 - from an `object` (*located in `ikats.objects`*)
 
 The main structure of the API is the following
 
-```
+```python
 o = api.ds.get(name=name)
 |   |   |  |   |
 |   |   |  |   +----------> Parameters              

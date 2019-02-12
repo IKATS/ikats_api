@@ -36,10 +36,11 @@ class TestSession(TestCase):
         self.assertEqual("http://localhost", session.host)
         self.assertEqual(80, session.port)
 
-        self.assertEqual("%s:%s/python_api" % (session.host, session.port), session.catalog_url)
-        self.assertEqual("%s:%s/python_api" % (session.host, session.port), session.engine_url)
-        self.assertEqual("%s:%s/datamodel-api" % (session.host, session.port), session.dm_url)
-        self.assertEqual("%s:%s/opentsdb" % (session.host, session.port), session.tsdb_url)
+        self.assertEqual("%s:%s/pybase" % (session.host, session.port), session.catalog_url)
+        self.assertEqual("%s:%s/pybase" %
+                         (session.host, session.port), session.engine_url)
+        self.assertEqual("%s:%s/datamodel" % (session.host, session.port), session.dm_url)
+        self.assertEqual("%s:%s/tsdb" % (session.host, session.port), session.tsdb_url)
         self.assertEqual(requests.Session, type(session.rs))
 
         # Nominal session
