@@ -6,7 +6,7 @@ from setuptools import find_packages
 
 
 setup(name='ikats',
-      version='0.0',
+      version='0.1.0',
       description='IKATS Python API',
       author='Fabien TORTORA',
       author_email='fabien.tortora@c-s.fr',
