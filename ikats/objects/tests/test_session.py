@@ -54,23 +54,3 @@ class TestSession(TestCase):
         session = IkatsSession(host='http://ikats.org', port="80")
         self.assertEqual("http://ikats.org", session.host)
         self.assertEqual(80, session.port)
-
-    def test_malformed_host(self):
-        """
-        Test Session non-nominal usages
-        """
-        # Space in URL
-        with self.assertRaises(ValueError):
-            IkatsSession(host="space in url")
-
-        # No scheme
-        with self.assertRaises(ValueError):
-            IkatsSession(host="ikats.org")
-
-        # No URL
-        with self.assertRaises(ValueError):
-            IkatsSession(host="https://")
-
-        # Bad IP
-        with self.assertRaises(ValueError):
-            IkatsSession(host="https://1.2.3.4.5")

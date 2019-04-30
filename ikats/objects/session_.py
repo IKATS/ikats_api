@@ -16,7 +16,7 @@ limitations under the License.
 
 """
 import logging
-import re
+import os
 import requests
 
 from ikats.lib import check_type
@@ -29,7 +29,7 @@ class IkatsSession:
     The IKATS entry point shall be set to the main GUI URL and port.
     """
 
-    def __init__(self, host="http://localhost", port="80", sc=None, name="IKATS_SESSION"):
+    def __init__(self, host=None, port="80", sc=None, name="IKATS_SESSION"):
         """
         Initialize the session
 
@@ -102,17 +102,13 @@ class IkatsSession:
 
     @host.setter
     def host(self, value):
-        regex = re.compile(
-            r'^(?:http)s?://'  # http:// or https://
-            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # Domain
-            r'localhost|'  # localhost...
-            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ... or IP
-            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
-        if re.match(regex, value) is not None:
-            self.__host = str(value)
-        else:
-            raise ValueError("Malformed host name: %s" % value)
+        # Default value is localhost, overridden by environment variable IKATS_GUI_HOST, overridden by explicit value
+        if value is None:
+            value = os.environ.get("IKATS_GUI_HOST", "http://localhost")
+
+        check_type(value=value, allowed_types=str, var_name="host", raise_exception=True)
+        self.__host = value
 
     @property
     def port(self):
@@ -124,6 +120,11 @@ class IkatsSession:
 
     @port.setter
     def port(self, value):
+
+        # Default value is localhost, overridden by environment variable IKATS_GUI_HOST, overridden by explicit value
+        if value is None:
+            value = int(os.environ.get("IKATS_GUI_PORT", 80))
+
         check_type(value=value, allowed_types=[int, str, float, None], var_name="port", raise_exception=True)
 
         if int(value) <= 0 or int(value) >= 65535:

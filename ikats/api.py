@@ -27,7 +27,7 @@ class IkatsAPI:
     Common library of endpoints used by algorithms developers & contributors to access the data handled by IKATS.
     """
 
-    def __init__(self, host="http://localhost", port="80", sc=None, name="IKATS", session=None, emulate=False):
+    def __init__(self, host=None, port=None, sc=None, name="IKATS", session=None, emulate=False):
         """
         Constructor
 
