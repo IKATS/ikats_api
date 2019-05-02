@@ -106,6 +106,8 @@ class IkatsSession:
         # Default value is localhost, overridden by environment variable IKATS_GUI_HOST, overridden by explicit value
         if value is None:
             value = os.environ.get("IKATS_GUI_HOST", "http://localhost")
+            if not value.startswith("http"):
+                value="http://%s"%value
 
         check_type(value=value, allowed_types=str, var_name="host", raise_exception=True)
         self.__host = value
